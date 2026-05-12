@@ -1,0 +1,22 @@
+# PlatformIO build output
+.pio/
+
+# PlatformIO IDE files
+.pioenvs/
+.piolibdeps/
+
+# VSCode & Tools
+.vscode/
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
