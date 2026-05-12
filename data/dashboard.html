@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Traffic Light Dashboard</title>
+</head>
+<body>
+
+    <!--
+        Build your UI here. The JS below is already wired up — don't change it,
+        just read `state` in your own code and call the helper functions.
+
+        state object shape (updated every 500ms):
+        {
+            phase:     "top_green" | "top_yellow" | "bottom_green" | "bottom_yellow" |
+                       "left_green" | "left_yellow" | "right_green" | "right_yellow" |
+                       "override" | "emergency",
+            emergency: true | false,
+            override:  "top" | "bottom" | "left" | "right" | null,
+            leds: {
+                top:    "green" | "yellow" | "red",
+                bottom: "green" | "yellow" | "red",
+                left:   "green" | "yellow" | "red",
+                right:  "green" | "yellow" | "red"
+            },
+            timings: { top: 5000, bottom: 5000, left: 5000, right: 5000, yellow: 2000 },
+            remaining: 2400   // ms left in current phase
+        }
+    -->
+
+    <!-- ↓ Replace this placeholder with your actual UI ↓ -->
+    <pre id="debug" style="font-family:monospace"></pre>
+    <!-- ↑ Remove the debug block once you have real UI ↑ -->
+
+    <script>
+        // Current system state — read this anywhere in your UI code
+        let state = null;
+
+        // Called every 500ms with fresh state — hook your UI updates in here
+        function onStateUpdate(s) {
+            // TODO: update your UI elements using s.leds, s.phase, s.emergency, etc.
+
+            // Debug display (remove once you have real UI)
+            document.getElementById('debug').textContent = JSON.stringify(s, null, 2);
+        }
+
+        // Force one direction green. dir = "top" | "bottom" | "left" | "right"
+        async function override(dir) {
+            await fetch('/api/override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction: dir })
+            });
+        }
+
+        // Clear override and return to normal cycle
+        async function clearOverride() {
+            await fetch('/api/override', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ direction: 'none' })
+            });
+        }
+
+        // Update phase durations. All values are in milliseconds.
+        // Omit a key to leave that timing unchanged.
+        async function setTimings({ top, bottom, left, right, yellow }) {
+            const body = {};
+            if (top    != null) body.top    = top;
+            if (bottom != null) body.bottom = bottom;
+            if (left   != null) body.left   = left;
+            if (right  != null) body.right  = right;
+            if (yellow != null) body.yellow = yellow;
+            await fetch('/api/timing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
+
+        // ── Polling loop (do not modify) ─────────────────────────────────────
+        async function poll() {
+            try {
+                const res = await fetch('/api/status');
+                state = await res.json();
+                onStateUpdate(state);
+            } catch (e) {
+                console.error('Status fetch failed:', e);
+            }
+        }
+        setInterval(poll, 100);
+        poll();
+    </script>
+</body>
+</html>
