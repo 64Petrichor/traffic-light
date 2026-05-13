@@ -46,13 +46,18 @@ static void applyPhase(Phase p) {
 }
 
 static uint32_t phaseDuration(Phase p) {
+    uint32_t base;
     switch (p) {
-        case TOP_GREEN:    return traffic.timings.top;
-        case BOTTOM_GREEN: return traffic.timings.bottom;
-        case LEFT_GREEN:   return traffic.timings.left;
-        case RIGHT_GREEN:  return traffic.timings.right;
+        case TOP_GREEN:    base = traffic.timings.top;    break;
+        case BOTTOM_GREEN: base = traffic.timings.bottom; break;
+        case LEFT_GREEN:   base = traffic.timings.left;   break;
+        case RIGHT_GREEN:  base = traffic.timings.right;  break;
         default:           return traffic.timings.yellow;
     }
+    // Auto-dim: extend green phases at night so traffic gets more time to clear
+    if (traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold)
+        return (uint32_t)(base * LDR_NIGHT_MULTIPLIER);
+    return base;
 }
 
 static Phase nextPhase(Phase p) {

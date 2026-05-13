@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Traffic Light Dashboard</title>
+    <style>
+        .ldr-card { background: #16213e; border-radius: 12px; padding: 16px 20px;
+                    max-width: 500px; margin: 16px auto; color: #eee;
+                    font-family: 'Segoe UI', Arial, sans-serif; }
+        .ldr-card h2 { font-size: 1rem; color: #a0c4ff; margin-bottom: 10px; }
+        .ldr-row { display: flex; align-items: center; gap: 12px; }
+        .ldr-value { font-size: 2rem; font-weight: bold; min-width: 60px; }
+        .ldr-bar-wrap { flex: 1; background: #0f3460; border-radius: 20px;
+                        height: 14px; overflow: hidden; }
+        .ldr-bar { height: 100%; border-radius: 20px; transition: width 0.5s, background 0.5s; }
+        .ldr-label { font-size: 0.75rem; color: #888; margin-top: 6px; }
+        .dim-badge { display: inline-block; background: #e67e22; color: white;
+                     border-radius: 6px; padding: 2px 8px; font-size: 0.72rem;
+                     font-weight: bold; margin-left: 8px; vertical-align: middle; }
+        .btn-dim { background: #0f3460; border: none; color: #eee; border-radius: 8px;
+                   padding: 8px 20px; font-size: 0.9rem; cursor: pointer; margin-top: 10px; width: 100%; }
+        .btn-dim:hover { background: #1a4a8a; }
+    </style>
 </head>
 <body>
 
@@ -24,10 +42,27 @@
                 left:   "green" | "yellow" | "red",
                 right:  "green" | "yellow" | "red"
             },
-            timings: { top: 5000, bottom: 5000, left: 5000, right: 5000, yellow: 2000 },
-            remaining: 2400   // ms left in current phase
+            timings:    { top: 5000, bottom: 5000, left: 5000, right: 5000, yellow: 2000 },
+            remaining:  2400,     // ms left in current phase
+            brightness: 75,       // LDR ambient brightness 0-100
+            threshold:  75,       // night threshold — set from first boot reading
+            autoDim:    true,     // whether auto-dim is enabled
+            nightMode:  false     // true when autoDim && brightness < threshold
         }
     -->
+
+    <!-- LDR ambient brightness card -->
+    <div class="ldr-card">
+        <h2>&#x1F506; Ambient Brightness <span id="night-badge" class="dim-badge" style="display:none">NIGHT MODE ON</span></h2>
+        <div class="ldr-row">
+            <div class="ldr-value" id="ldr-value">--%</div>
+            <div class="ldr-bar-wrap">
+                <div class="ldr-bar" id="ldr-bar" style="width:0%;background:#27ae60"></div>
+            </div>
+        </div>
+        <div class="ldr-label">GPIO 34 &mdash; LDR voltage divider &nbsp;|&nbsp; Night threshold: <b id="ldr-threshold">--%</b> &nbsp;|&nbsp; Auto-dim: <b id="autodim-state">--</b></div>
+        <button class="btn-dim" onclick="toggleDim()" id="dim-btn">-- Auto-Dim</button>
+    </div>
 
     <!-- ↓ Replace this placeholder with your actual UI ↓ -->
     <pre id="debug" style="font-family:monospace"></pre>
@@ -40,6 +75,18 @@
         // Called every 500ms with fresh state — hook your UI updates in here
         function onStateUpdate(s) {
             // TODO: update your UI elements using s.leds, s.phase, s.emergency, etc.
+
+            // LDR brightness card
+            const brt = s.brightness ?? 0;
+            const barColor = brt < 30 ? '#e67e22' : brt < 60 ? '#f1c40f' : '#27ae60';
+            document.getElementById('ldr-value').textContent = brt + '%';
+            document.getElementById('ldr-value').style.color = barColor;
+            document.getElementById('ldr-bar').style.width = brt + '%';
+            document.getElementById('ldr-bar').style.background = barColor;
+            document.getElementById('ldr-threshold').textContent = (s.threshold ?? '--') + '%';
+            document.getElementById('night-badge').style.display = s.nightMode ? 'inline-block' : 'none';
+            document.getElementById('autodim-state').textContent = s.autoDim ? 'ON' : 'OFF';
+            document.getElementById('dim-btn').textContent = s.autoDim ? '\uD83C\uDF15 Disable Auto-Dim' : '\uD83C\uDF1D Enable Auto-Dim';
 
             // Debug display (remove once you have real UI)
             document.getElementById('debug').textContent = JSON.stringify(s, null, 2);
@@ -61,6 +108,11 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ direction: 'none' })
             });
+        }
+
+        // Toggle auto-dim on/off
+        async function toggleDim() {
+            await fetch('/api/dim', { method: 'POST' });
         }
 
         // Update phase durations. All values are in milliseconds.

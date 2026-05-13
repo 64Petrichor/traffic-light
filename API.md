@@ -10,7 +10,7 @@
 ## Endpoints
 
 ### GET /api/status
-Returns the current system state. Poll this every 500ms.
+Returns the current system state. Poll this every 100ms.
 
 **Response:**
 ```json
@@ -31,7 +31,11 @@ Returns the current system state. Poll this every 500ms.
     "right": 5000,
     "yellow": 2000
   },
-  "remaining": 2400
+  "remaining": 2400,
+  "brightness": 75,
+  "threshold": 75,
+  "autoDim": true,
+  "nightMode": false
 }
 ```
 
@@ -43,6 +47,10 @@ Returns the current system state. Poll this every 500ms.
 | `leds.X` | `"green"`, `"yellow"`, or `"red"` |
 | `timings` | Green phase durations in ms per direction, yellow duration shared |
 | `remaining` | ms left in current phase |
+| `brightness` | LDR ambient brightness 0–100 (higher = brighter) |
+| `threshold` | Night threshold — calibrated from the first LDR reading at boot |
+| `autoDim` | `true` when auto-dim is enabled |
+| `nightMode` | `true` when autoDim is on and brightness is below the threshold |
 
 ---
 
@@ -75,6 +83,15 @@ Update how long each green phase lasts. All values in milliseconds. You can send
 ```
 
 **Response:** `{ "ok": true }`
+
+---
+
+### POST /api/dim
+Toggle auto-dim on or off. When auto-dim is active and brightness drops below 30%, green phase durations are doubled to give traffic more time at night.
+
+**Body:** _(none required)_
+
+**Response:** `{ "ok": true, "autoDim": true }`
 
 ---
 

@@ -62,7 +62,11 @@ void webserverInit() {
         timings["right"]  = traffic.timings.right;
         timings["yellow"] = traffic.timings.yellow;
 
-        doc["remaining"] = timeRemaining();
+        doc["remaining"]  = timeRemaining();
+        doc["brightness"]  = traffic.ldrBrightness;
+        doc["threshold"]   = traffic.ldrNightThreshold;
+        doc["autoDim"]     = traffic.autoDimEnabled;
+        doc["nightMode"]   = traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold;
 
         String body;
         serializeJson(doc, body);
@@ -111,6 +115,15 @@ void webserverInit() {
             req->send(200, "application/json", "{\"ok\":true}");
         }
     );
+
+    // POST /api/dim  — toggle auto-dim on/off
+    server.on("/api/dim", HTTP_POST, [](AsyncWebServerRequest* req) {
+        traffic.autoDimEnabled = !traffic.autoDimEnabled;
+        Serial.printf("[LDR] Auto-dim %s\n", traffic.autoDimEnabled ? "ENABLED" : "DISABLED");
+        req->send(200, "application/json",
+                  traffic.autoDimEnabled ? "{\"ok\":true,\"autoDim\":true}"
+                                         : "{\"ok\":true,\"autoDim\":false}");
+    });
 
     server.begin();
     Serial.println("Server started");

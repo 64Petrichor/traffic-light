@@ -250,7 +250,37 @@ Pin Mapping & Wiring Reference | ESP32 Platform
   </tbody>
 </table>
 
-## 6. Resistors Summary
+## 6. LDR (Light Dependent Resistor)
+
+<table>
+  <thead>
+    <tr>
+      <th>Connection</th>
+      <th>ESP32 GPIO / Rail</th>
+      <th>Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LDR leg 1</td>
+      <td>3.3V</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>LDR leg 2 + 10KΩ leg 1</td>
+      <td>GPIO 34</td>
+      <td>Analog read — ADC1, input-only pin</td>
+    </tr>
+    <tr>
+      <td>10KΩ leg 2</td>
+      <td>GND</td>
+      <td>Pull-down resistor</td>
+    </tr>
+  </tbody>
+</table>
+▲ GPIO 34 is ADC1 — works while WiFi is active. ADC2 pins (e.g. GPIO 13, 14) do not.
+
+## 7. Resistors Summary
 
 <table>
   <thead>
@@ -273,6 +303,12 @@ Pin Mapping & Wiring Reference | ESP32 Platform
       <td>10KΩ</td>
       <td>1</td>
       <td>GPIO 2 → GND</td>
+    </tr>
+    <tr>
+      <td>LDR pull-down</td>
+      <td>10KΩ</td>
+      <td>1</td>
+      <td>GPIO 34 → GND</td>
     </tr>
   </tbody>
 </table>
@@ -320,13 +356,18 @@ GND → Common ground across all components (ESP32, 595, RFID, LEDs)
       <td>1</td>
     </tr>
     <tr>
+      <td>LDR</td>
+      <td>GPIO 34</td>
+      <td>1</td>
+    </tr>
+    <tr>
       <td>Total</td>
       <td></td>
-      <td>13 / ~26 usable</td>
+      <td>14 / ~26 usable</td>
     </tr>
   </tbody>
 </table>
 
 Remaining free GPIOs: 0, 13, 14, 15, 32, 33 (previously used by LCD — now available)
-△ GPIO 34, 35, 36, 39 are input-only — not used in this design.
+△ GPIO 35, 36, 39 are input-only — not used in this design.
 △ GPIO 0, 12, 15 have boot-mode implications — avoid using them as outputs.

@@ -6,6 +6,7 @@ ESP32-based 4-way traffic light controller with a web dashboard for real-time ad
 - Configurable phase durations per direction
 - Manual phase override via web dashboard
 - RFID emergency preemption — scan any card to trigger all-red for 5 seconds
+- LDR ambient light sensing — brightness (0–100) printed to Serial every second
 - Self-hosted web dashboard over ESP32 WiFi hotspot — no router needed
 
 ## Hardware
@@ -16,13 +17,14 @@ ESP32-based 4-way traffic light controller with a web dashboard for real-time ad
 | 74HC595N shift register | Drives 8 LEDs (4× red, 4× yellow) |
 | 4× Green LEDs | Direct GPIO, one per road |
 | Emergency red LED | Indicates active emergency state |
+| LDR | Ambient light sensor, output on Serial Monitor |
 
 Full pin mapping: [`traffic light pins.md`](traffic%20light%20pins.md)
 
 ## Project Structure
 ```
 src/
-  main.cpp          — setup, loop, RFID handling
+  main.cpp          — setup, loop, RFID handling, LDR reading
   traffic.h/.cpp    — traffic state machine, LED output
   webserver.h/.cpp  — WiFi AP, HTTP server, REST API
 data/

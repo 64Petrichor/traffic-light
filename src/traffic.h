@@ -15,6 +15,9 @@
 // Emergency LED
 #define EMERG_PIN 22
 
+// LDR auto-dim
+#define LDR_NIGHT_MULTIPLIER 2.0f   // multiply green duration by this at night
+
 // Shift register bit positions
 // Q0–Q3: Red LEDs (Top, Bottom, Left, Right)
 // Q4–Q7: Yellow LEDs (Top, Bottom, Left, Right)
@@ -50,6 +53,9 @@ struct TrafficState {
     int      overrideDir  = -1;  // -1=none, 0=top, 1=bottom, 2=left, 3=right
     Timings  timings;
     uint32_t phaseStart   = 0;
+    int      ldrBrightness     = 100;  // last measured brightness 0-100
+    int      ldrNightThreshold = 30;   // set at boot from first LDR reading
+    bool     autoDimEnabled    = true;  // toggled from web UI
 };
 
 extern TrafficState traffic;
