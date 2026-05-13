@@ -1,3 +1,16 @@
+/*
+ * main.cpp — Entry point for the Adaptive Traffic Light System.
+ *
+ * Responsibilities:
+ *   - Arduino setup() / loop() entry points
+ *   - Polling the RFID reader for emergency triggers
+ *   - Sampling the LDR ambient light sensor
+ *   - Delegating traffic state updates to traffic.cpp
+ *
+ * All traffic logic lives in traffic.cpp/.h.
+ * All web/API logic lives in webserver.cpp/.h.
+ */
+
 #include <Arduino.h>
 #include <SPI.h>
 #include <MFRC522.h>
@@ -12,6 +25,10 @@
 
 MFRC522 rfid(SS_PIN, RST_PIN);
 
+// Reads ambient brightness from the LDR on GPIO 34 once per second.
+// Maps the raw ADC value (0–4095) to a 0–100% scale and stores it in
+// traffic.ldrBrightness. Prints to Serial; tags the line with [NIGHT MODE]
+// when night mode is active.
 static void checkLDR() {
     static uint32_t lastPrint = 0;
     if (millis() - lastPrint < 1000) return;
@@ -21,6 +38,10 @@ static void checkLDR() {
                   (traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold) ? " [NIGHT MODE]" : "");
 }
 
+// Polls the RFID reader for a new card on every loop iteration.
+// If a card is detected and the cooldown has expired, triggers an emergency
+// (all-red for 5 seconds) and starts the 15-second cooldown timer.
+// Does nothing if an emergency is already active.
 static void checkRFID() {
     static uint32_t lastRfidScanMs = 0;
     uint32_t now = millis();
@@ -45,6 +66,9 @@ static void checkRFID() {
     rfid.PCD_StopCrypto1();
 }
 
+// Runs once at power-on.
+// Initialises SPI, the RFID reader, the traffic state machine, and the web server.
+// Calibrates the LDR night threshold to the ambient brightness at boot time.
 void setup() {
     Serial.begin(115200);
     SPI.begin();
@@ -60,6 +84,8 @@ void setup() {
     Serial.println("Ready");
 }
 
+// Called repeatedly by the Arduino runtime — the main program loop.
+// Polls the RFID reader, samples the LDR, then advances the traffic state machine.
 void loop() {
     checkRFID();
     checkLDR();

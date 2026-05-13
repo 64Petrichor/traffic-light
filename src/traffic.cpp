@@ -1,3 +1,16 @@
+/*
+ * traffic.cpp — Traffic light state machine and LED output driver.
+ *
+ * Manages the 4-road phase cycle (green → yellow → next road → …),
+ * emergency mode (all-red for 5 s triggered by RFID), and manual override
+ * (one road held green until cleared from the dashboard).
+ *
+ * LED output strategy:
+ *   - Red and Yellow LEDs are driven through a 74HC595N shift register
+ *     using only 3 GPIO pins (DATA, CLOCK, LATCH).
+ *   - Green LEDs are driven directly from 4 individual GPIO pins.
+ */
+
 #include "traffic.h"
 
 TrafficState traffic;
@@ -6,12 +19,16 @@ TrafficState traffic;
 
 enum LedColor { LED_RED, LED_YELLOW, LED_GREEN };
 
+// Clocks one byte into the 74HC595 shift register and latches it to the outputs.
+// Each bit corresponds to one red or yellow LED (see BIT_* defines in traffic.h).
 static void shiftWrite(byte state) {
     digitalWrite(LATCH_PIN, LOW);
     shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, state);
     digitalWrite(LATCH_PIN, HIGH);
 }
 
+// Sets all 8 red/yellow LEDs via the shift register and all 4 green LEDs via
+// direct GPIO, based on the requested color for each of the four roads.
 static void applyColors(LedColor top, LedColor bottom, LedColor left, LedColor right) {
     byte sr = 0;
     if (top    == LED_RED)    sr |= (1 << BIT_RED_TOP);
@@ -30,6 +47,8 @@ static void applyColors(LedColor top, LedColor bottom, LedColor left, LedColor r
     digitalWrite(GREEN_RIGHT,  right  == LED_GREEN ? HIGH : LOW);
 }
 
+// Translates a named Phase into the correct LED color pattern and drives the hardware.
+// OVERRIDE and EMERGENCY both result in all-red; green is applied separately for OVERRIDE.
 static void applyPhase(Phase p) {
     switch (p) {
         case TOP_GREEN:     applyColors(LED_GREEN,  LED_RED,    LED_RED,    LED_RED);    break;
@@ -45,6 +64,9 @@ static void applyPhase(Phase p) {
     }
 }
 
+// Returns how long the given phase should last in milliseconds.
+// For green phases, doubles the configured duration when night mode is active.
+// All yellow phases share a single duration regardless of road.
 static uint32_t phaseDuration(Phase p) {
     uint32_t base;
     switch (p) {
@@ -60,6 +82,8 @@ static uint32_t phaseDuration(Phase p) {
     return base;
 }
 
+// Returns the phase that follows the given one in the fixed rotation sequence:
+// TOP_GREEN → TOP_YELLOW → BOTTOM_GREEN → … → RIGHT_YELLOW → TOP_GREEN.
 static Phase nextPhase(Phase p) {
     switch (p) {
         case TOP_GREEN:     return TOP_YELLOW;
@@ -75,6 +99,8 @@ static Phase nextPhase(Phase p) {
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
+// Sets all LED-related pins to OUTPUT mode, resets the state to TOP_GREEN,
+// and drives the initial LED pattern. Called once from setup().
 void trafficInit() {
     pinMode(DATA_PIN,    OUTPUT);
     pinMode(CLOCK_PIN,   OUTPUT);
@@ -90,6 +116,10 @@ void trafficInit() {
     applyPhase(TOP_GREEN);
 }
 
+// Advances the traffic state machine. Called on every loop() iteration.
+// During emergency: waits 5 s then resets to normal cycle.
+// During override: does nothing (held until cleared via trafficSetOverride(-1)).
+// Normal operation: moves to the next phase when the current phase duration expires.
 void trafficUpdate() {
     uint32_t now = millis();
 
@@ -113,6 +143,9 @@ void trafficUpdate() {
     }
 }
 
+// Forces the given direction green and pauses the normal cycle.
+// Pass dir = -1 to clear the override and restart the cycle from TOP_GREEN.
+// dir: 0 = top, 1 = bottom, 2 = left, 3 = right.
 void trafficSetOverride(int dir) {
     traffic.overrideDir = dir;
 
@@ -130,6 +163,9 @@ void trafficSetOverride(int dir) {
     digitalWrite(greenPins[dir], HIGH);
 }
 
+// Immediately sets all roads to red, lights the emergency LED, and starts
+// a 5-second countdown after which the normal cycle resumes.
+// Idempotent — does nothing if an emergency is already in progress.
 void trafficTriggerEmergency() {
     if (traffic.emergency) return;
     traffic.emergency  = true;
@@ -139,6 +175,7 @@ void trafficTriggerEmergency() {
     digitalWrite(EMERG_PIN, HIGH);
 }
 
+// Returns a short string label for the current phase, used in the JSON API response.
 const char* phaseName() {
     if (traffic.emergency) return "emergency";
     switch (traffic.phase) {
@@ -155,6 +192,9 @@ const char* phaseName() {
     }
 }
 
+// Returns the current LED color ("green", "yellow", or "red") for the given direction.
+// Accounts for emergency (all red), override (one green, rest red), and normal cycle.
+// dir: 0 = top, 1 = bottom, 2 = left, 3 = right.
 const char* ledColor(int dir) {
     if (traffic.emergency) return "red";
 
@@ -170,6 +210,9 @@ const char* ledColor(int dir) {
     return "red";
 }
 
+// Returns the number of milliseconds remaining in the current phase.
+// Returns 0 when an override is active (no defined end time).
+// During an emergency, counts down from 5000 ms to 0.
 uint32_t timeRemaining() {
     if (traffic.emergency) {
         uint32_t elapsed = millis() - traffic.phaseStart;

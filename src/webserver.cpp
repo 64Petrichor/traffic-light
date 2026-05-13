@@ -1,3 +1,17 @@
+/*
+ * webserver.cpp — WiFi access point, async HTTP server, and REST API.
+ *
+ * The ESP32 acts as its own WiFi hotspot (no external router needed).
+ * Clients connect to the hotspot and open http://192.168.4.1 to reach the
+ * dashboard, which is served from the LittleFS flash filesystem.
+ *
+ * REST API endpoints:
+ *   GET  /api/status   — returns full system state as JSON (poll at ~100 ms)
+ *   POST /api/override — force a direction green or clear override
+ *   POST /api/timing   — update per-road green and yellow durations
+ *   POST /api/dim      — toggle night mode (auto-dim) on/off
+ */
+
 #include "webserver.h"
 #include "traffic.h"
 #include <WiFi.h>
@@ -10,6 +24,8 @@ static AsyncWebServer server(80);
 static const char* SSID = "TrafficLight";
 static const char* PASS = "12345678";
 
+// Converts a direction index to its string name for use in JSON responses.
+// dir: 0 = "top", 1 = "bottom", 2 = "left", 3 = "right", anything else = "none".
 static const char* dirName(int dir) {
     switch (dir) {
         case 0: return "top";
@@ -20,6 +36,8 @@ static const char* dirName(int dir) {
     }
 }
 
+// Initialises the WiFi access point, mounts LittleFS, registers all HTTP
+// routes, and starts the async web server on port 80.
 void webserverInit() {
     if (!LittleFS.begin()) {
         Serial.println("LittleFS mount failed — run 'pio run -t uploadfs' then reflash");
@@ -33,12 +51,14 @@ void webserverInit() {
     Serial.println(WiFi.softAPIP());
     Serial.println("Starting server...");
 
-    // Serve dashboard
+    // Serves the web dashboard HTML file from the LittleFS flash filesystem.
     server.on("/", HTTP_GET, [](AsyncWebServerRequest* req) {
         req->send(LittleFS, "/dashboard.html", "text/html");
     });
 
-    // GET /api/status
+    // Returns the full system state as a JSON object.
+    // Includes current phase, LED colors, timings, time remaining, and LDR data.
+    // The dashboard polls this endpoint every 100 ms.
     server.on("/api/status", HTTP_GET, [](AsyncWebServerRequest* req) {
         StaticJsonDocument<384> doc;
         doc["phase"]     = phaseName();
@@ -73,7 +93,8 @@ void webserverInit() {
         req->send(200, "application/json", body);
     });
 
-    // POST /api/override  body: {"direction":"top"} or {"direction":"none"}
+    // Forces one road green (pausing the normal cycle) or clears an active override.
+    // Expected body: {"direction": "top" | "bottom" | "left" | "right" | "none"}
     server.on("/api/override", HTTP_POST,
         [](AsyncWebServerRequest* req) {},
         nullptr,
@@ -95,7 +116,9 @@ void webserverInit() {
         }
     );
 
-    // POST /api/timing  body: {"top":5000,"bottom":5000,"left":5000,"right":5000,"yellow":2000}
+    // Updates one or more phase durations. Only keys present in the body are changed;
+    // omitted keys leave the existing timing unchanged.
+    // Expected body: {"top":5000, "bottom":5000, "left":5000, "right":5000, "yellow":2000}
     server.on("/api/timing", HTTP_POST,
         [](AsyncWebServerRequest* req) {},
         nullptr,
@@ -116,7 +139,8 @@ void webserverInit() {
         }
     );
 
-    // POST /api/dim  — toggle auto-dim on/off
+    // Toggles auto-dim (night mode) on or off.
+    // When enabled, green phases are doubled in duration while brightness is below threshold.
     server.on("/api/dim", HTTP_POST, [](AsyncWebServerRequest* req) {
         traffic.autoDimEnabled = !traffic.autoDimEnabled;
         Serial.printf("[LDR] Auto-dim %s\n", traffic.autoDimEnabled ? "ENABLED" : "DISABLED");
