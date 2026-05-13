@@ -149,6 +149,12 @@ void webserverInit() {
                                          : "{\"ok\":true,\"autoDim\":false}");
     });
 
+    server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest* req) {
+        req->send(LittleFS, "/style.css", "text/css");
+    });
+    server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest* req) {
+        req->send(LittleFS, "/script.js", "application/javascript");
+    });
     server.begin();
     Serial.println("Server started");
 }

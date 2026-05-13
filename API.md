@@ -87,7 +87,7 @@ Update how long each green phase lasts. All values in milliseconds. You can send
 ---
 
 ### POST /api/dim
-Toggle auto-dim on or off. When auto-dim is active and brightness drops below 30%, green phase durations are doubled to give traffic more time at night.
+Toggle auto-dim on or off. When auto-dim is active and brightness drops below the boot-calibrated threshold, green phase durations are doubled to give traffic more time at night.
 
 **Body:** _(none required)_
 

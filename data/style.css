@@ -1,0 +1,70 @@
+/* Mobile-First Base */
+body {
+    margin: 0;
+    background: radial-gradient(circle at center, #0b1020, #05070f);
+    font-family: 'Segoe UI', Arial, sans-serif;
+    color: #eaeaea;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px;
+    overflow-x: hidden;
+}
+
+.main-wrapper {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* LDR Card */
+.ldr-card {
+    background: #16213e; border-radius: 12px; padding: 16px 20px;
+    color: #eee; border: 1px solid rgba(0, 225, 255, 0.2);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+.ldr-card h2 { font-size: 1rem; color: #00e1ff; margin: 0 0 10px 0; text-shadow: 0 0 8px rgba(0, 225, 255, 0.4); }
+.ldr-row { display: flex; align-items: center; gap: 12px; }
+.ldr-value { font-size: 2rem; font-weight: bold; min-width: 60px; text-shadow: 0 0 10px currentColor; }
+.ldr-bar-wrap { flex: 1; background: #071329; border-radius: 20px; height: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); }
+.ldr-bar { height: 100%; border-radius: 20px; transition: width 0.5s, background 0.5s; box-shadow: 0 0 12px currentColor; }
+.ldr-label { font-size: 0.7rem; color: #888; margin-top: 8px; line-height: 1.4; }
+.dim-badge { display: inline-block; background: #ff7b00; color: white; border-radius: 6px; padding: 2px 8px; font-size: 0.7rem; font-weight: bold; margin-left: 8px; vertical-align: middle; box-shadow: 0 0 10px #ff7b00; }
+
+/* Unified Neon Buttons */
+button {
+    background: #1f2937; border: 1px solid rgba(255,255,255,0.1); color: #eee; border-radius: 8px;
+    padding: 14px; font-size: 0.95rem; font-weight: bold; cursor: pointer; width: 100%;
+    transition: 0.2s; -webkit-tap-highlight-color: transparent;
+}
+button:active { background: #374151; transform: scale(0.96); }
+.btn-dim { background: #1a4a8a; border-color: #00e1ff; margin-top: 10px; box-shadow: 0 0 10px rgba(0, 225, 255, 0.2); }
+.btn-clear { background: #3b4252; margin-top: 5px; color: #ff7b7b; border-color: #ff3b3b44; }
+
+/* Status & Timings Panels */
+.panel { background: rgba(255,255,255,0.03); padding: 15px; border-radius: 12px; border: 1px solid rgba(0, 225, 255, 0.1); }
+.panel-title { font-size: 0.75rem; color: #00e1ff; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 1px; }
+.status-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.status-box { background: rgba(0,0,0,0.4); padding: 10px; border-radius: 8px; text-align: center; border: 1px solid rgba(255,255,255,0.05); }
+.val { font-size: 1.1rem; font-weight: bold; color: #00e1ff; display: block; text-shadow: 0 0 8px rgba(0, 225, 255, 0.5); }
+
+/* Intersection Visualizer */
+.intersection { display: flex; flex-direction: column; align-items: center; padding: 25px 0; background: radial-gradient(circle, #16213e 0%, #05070f 100%); border-radius: 30px; }
+.road { display: flex; gap: 10px; padding: 10px; background: #0a0a0a; border-radius: 10px; border: 1px solid #222; }
+.road.v { flex-direction: column; }
+.mid-section { display: flex; align-items: center; justify-content: center; }
+
+.light { width: 24px; height: 24px; border-radius: 50%; background: #1a1a1a; box-shadow: inset 0 0 5px #000; transition: 0.3s; }
+
+.light.red.active    { background: #ff1a1a; box-shadow: 0 0 15px #ff1a1a, 0 0 30px rgba(255, 26, 26, 0.4),  inset 0 0 8px rgba(255,255,255,0.4); }
+.light.yellow.active { background: #ffd000; box-shadow: 0 0 15px #ffd000, 0 0 30px rgba(255, 208, 0, 0.4), inset 0 0 8px rgba(255,255,255,0.4); }
+.light.green.active  { background: #00ff66; box-shadow: 0 0 20px #00ff66, 0 0 40px rgba(0, 255, 102, 0.4), inset 0 0 8px rgba(255,255,255,0.4); }
+
+.center-hub { width: 50px; height: 50px; background: #1a1f2e; margin: 5px; border-radius: 10px; position: relative; border: 1px solid rgba(0, 225, 255, 0.2); }
+.center-hub::after { content: "LIVE"; color: #00e1ff; font-size: 8px; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.6; }
+
+/* Inputs */
+.input-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+input[type="number"] { width: 80px; background: #05070f; border: 1px solid rgba(0, 225, 255, 0.3); color: #fff; padding: 10px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; }

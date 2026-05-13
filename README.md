@@ -40,7 +40,7 @@ If that gap exceeds the phase duration, it moves to the next phase and stamps th
 
 ---
 
-### Interruption 1 — Manual override (web dashboard) (IN PROGRESS)
+### Interruption 1 — Manual override (web dashboard)
 
 From the dashboard, an operator can force any one road to stay green indefinitely. The cycle **pauses** and holds that road green until the operator clears the override. When cleared, the cycle resets back to the top (Top green).
 
@@ -71,7 +71,7 @@ The LDR brightness (0–100%) is printed to Serial every second for monitoring.
 
 ---
 
-### The web dashboard (IN PROGRESS)
+### The web dashboard
 
 The ESP32 hosts its own WiFi hotspot — no router or internet connection needed. Connect to it and open a browser to reach the dashboard.
 

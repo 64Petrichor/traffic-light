@@ -2,147 +2,72 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Traffic Light Dashboard</title>
-    <style>
-        .ldr-card { background: #16213e; border-radius: 12px; padding: 16px 20px;
-                    max-width: 500px; margin: 16px auto; color: #eee;
-                    font-family: 'Segoe UI', Arial, sans-serif; }
-        .ldr-card h2 { font-size: 1rem; color: #a0c4ff; margin-bottom: 10px; }
-        .ldr-row { display: flex; align-items: center; gap: 12px; }
-        .ldr-value { font-size: 2rem; font-weight: bold; min-width: 60px; }
-        .ldr-bar-wrap { flex: 1; background: #0f3460; border-radius: 20px;
-                        height: 14px; overflow: hidden; }
-        .ldr-bar { height: 100%; border-radius: 20px; transition: width 0.5s, background 0.5s; }
-        .ldr-label { font-size: 0.75rem; color: #888; margin-top: 6px; }
-        .dim-badge { display: inline-block; background: #e67e22; color: white;
-                     border-radius: 6px; padding: 2px 8px; font-size: 0.72rem;
-                     font-weight: bold; margin-left: 8px; vertical-align: middle; }
-        .btn-dim { background: #0f3460; border: none; color: #eee; border-radius: 8px;
-                   padding: 8px 20px; font-size: 0.9rem; cursor: pointer; margin-top: 10px; width: 100%; }
-        .btn-dim:hover { background: #1a4a8a; }
-    </style>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 
-    <!--
-        Build your UI here. The JS below is already wired up — don't change it,
-        just read `state` in your own code and call the helper functions.
-
-        state object shape (updated every 500ms):
-        {
-            phase:     "top_green" | "top_yellow" | "bottom_green" | "bottom_yellow" |
-                       "left_green" | "left_yellow" | "right_green" | "right_yellow" |
-                       "override" | "emergency",
-            emergency: true | false,
-            override:  "top" | "bottom" | "left" | "right" | null,
-            leds: {
-                top:    "green" | "yellow" | "red",
-                bottom: "green" | "yellow" | "red",
-                left:   "green" | "yellow" | "red",
-                right:  "green" | "yellow" | "red"
-            },
-            timings:    { top: 5000, bottom: 5000, left: 5000, right: 5000, yellow: 2000 },
-            remaining:  2400,     // ms left in current phase
-            brightness: 75,       // LDR ambient brightness 0-100
-            threshold:  75,       // night threshold — set from first boot reading
-            autoDim:    true,     // whether auto-dim is enabled
-            nightMode:  false     // true when autoDim && brightness < threshold
-        }
-    -->
-
-    <!-- LDR ambient brightness card -->
-    <div class="ldr-card">
-        <h2>&#x1F506; Ambient Brightness <span id="night-badge" class="dim-badge" style="display:none">NIGHT MODE ON</span></h2>
-        <div class="ldr-row">
-            <div class="ldr-value" id="ldr-value">--%</div>
-            <div class="ldr-bar-wrap">
-                <div class="ldr-bar" id="ldr-bar" style="width:0%;background:#27ae60"></div>
+    <div class="main-wrapper">
+        <div class="panel">
+            <div class="panel-title">System Status</div>
+            <div class="status-grid">
+                <div class="status-box"><span class="val" id="ui-phase">--</span><small>PHASE</small></div>
+                <div class="status-box"><span class="val" id="ui-timer">0s</span><small>REMAINING</small></div>
             </div>
         </div>
-        <div class="ldr-label">GPIO 34 &mdash; LDR voltage divider &nbsp;|&nbsp; Night threshold: <b id="ldr-threshold">--%</b> &nbsp;|&nbsp; Auto-dim: <b id="autodim-state">--</b></div>
-        <button class="btn-dim" onclick="toggleDim()" id="dim-btn">-- Auto-Dim</button>
+
+        <div class="ldr-card">
+            <h2>&#x1F506; Brightness <span id="night-badge" class="dim-badge" style="display:none">NIGHT MODE</span></h2>
+            <div class="ldr-row">
+                <div class="ldr-value" id="ldr-value">--%</div>
+                <div class="ldr-bar-wrap">
+                    <div class="ldr-bar" id="ldr-bar" style="width:0%;background:#00ff66"></div>
+                </div>
+            </div>
+            <div class="ldr-label">GPIO 34 | Threshold: <b id="ldr-threshold">--%</b> | Auto-dim: <b id="autodim-state">--</b></div>
+            <button class="btn-dim" onclick="toggleDim()" id="dim-btn">-- Auto-Dim</button>
+        </div>
+
+        <div class="intersection">
+            <div class="road v" id="top-road">
+                <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+            </div>
+            <div class="mid-section">
+                <div class="road" id="left-road">
+                    <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+                </div>
+                <div class="center-hub"></div>
+                <div class="road" id="right-road">
+                    <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+                </div>
+            </div>
+            <div class="road v" id="bottom-road">
+                <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Manual Green Override</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button onclick="override('top')">TOP</button>
+                <button onclick="override('bottom')">BOTTOM</button>
+                <button onclick="override('left')">LEFT</button>
+                <button onclick="override('right')">RIGHT</button>
+            </div>
+            <button class="btn-clear" onclick="clearOverride()">RESTORE AUTO CYCLE</button>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">Phase Duration (ms)</div>
+            <div class="input-group"><span>Green Duration (All):</span> <input type="number" id="in-green" value="5000"></div>
+            <div class="input-group"><span>Yellow Duration:</span> <input type="number" id="in-yellow" value="2000"></div>
+            <button style="background: linear-gradient(135deg, #1a4a8a, #00e1ff); color: white; border:none;" onclick="applySettings()">UPDATE ALL TIMINGS</button>
+        </div>
     </div>
 
-    <!-- ↓ Replace this placeholder with your actual UI ↓ -->
-    <pre id="debug" style="font-family:monospace"></pre>
-    <!-- ↑ Remove the debug block once you have real UI ↑ -->
+    <pre id="debug" style="display:none"></pre>
 
-    <script>
-        // Current system state — read this anywhere in your UI code
-        let state = null;
-
-        // Called every 500ms with fresh state — hook your UI updates in here
-        function onStateUpdate(s) {
-            // TODO: update your UI elements using s.leds, s.phase, s.emergency, etc.
-
-            // LDR brightness card
-            const brt = s.brightness ?? 0;
-            const barColor = brt < 30 ? '#e67e22' : brt < 60 ? '#f1c40f' : '#27ae60';
-            document.getElementById('ldr-value').textContent = brt + '%';
-            document.getElementById('ldr-value').style.color = barColor;
-            document.getElementById('ldr-bar').style.width = brt + '%';
-            document.getElementById('ldr-bar').style.background = barColor;
-            document.getElementById('ldr-threshold').textContent = (s.threshold ?? '--') + '%';
-            document.getElementById('night-badge').style.display = s.nightMode ? 'inline-block' : 'none';
-            document.getElementById('autodim-state').textContent = s.autoDim ? 'ON' : 'OFF';
-            document.getElementById('dim-btn').textContent = s.autoDim ? '\uD83C\uDF15 Disable Auto-Dim' : '\uD83C\uDF1D Enable Auto-Dim';
-
-            // Debug display (remove once you have real UI)
-            document.getElementById('debug').textContent = JSON.stringify(s, null, 2);
-        }
-
-        // Force one direction green. dir = "top" | "bottom" | "left" | "right"
-        async function override(dir) {
-            await fetch('/api/override', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ direction: dir })
-            });
-        }
-
-        // Clear override and return to normal cycle
-        async function clearOverride() {
-            await fetch('/api/override', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ direction: 'none' })
-            });
-        }
-
-        // Toggle auto-dim on/off
-        async function toggleDim() {
-            await fetch('/api/dim', { method: 'POST' });
-        }
-
-        // Update phase durations. All values are in milliseconds.
-        // Omit a key to leave that timing unchanged.
-        async function setTimings({ top, bottom, left, right, yellow }) {
-            const body = {};
-            if (top    != null) body.top    = top;
-            if (bottom != null) body.bottom = bottom;
-            if (left   != null) body.left   = left;
-            if (right  != null) body.right  = right;
-            if (yellow != null) body.yellow = yellow;
-            await fetch('/api/timing', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-        }
-
-        // ── Polling loop (do not modify) ─────────────────────────────────────
-        async function poll() {
-            try {
-                const res = await fetch('/api/status');
-                state = await res.json();
-                onStateUpdate(state);
-            } catch (e) {
-                console.error('Status fetch failed:', e);
-            }
-        }
-        setInterval(poll, 100);
-        poll();
-    </script>
+    <script src="/script.js"></script>
 </body>
 </html>

@@ -50,7 +50,10 @@ static void checkRFID() {
     if (lastRfidScanMs && (now - lastRfidScanMs) < RFID_COOLDOWN_MS) return;
 
     if (!rfid.PICC_IsNewCardPresent()) return;
-    if (!rfid.PICC_ReadCardSerial())   return;
+    if (!rfid.PICC_ReadCardSerial()) {
+        rfid.PICC_HaltA();   // reset card state so next poll sees it as new
+        return;
+    }
 
     Serial.print("Emergency triggered. UID:");
     for (byte i = 0; i < rfid.uid.size; i++) {
