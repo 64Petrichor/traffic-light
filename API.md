@@ -16,7 +16,9 @@ Returns the current system state. Poll this every 100ms.
 ```json
 {
   "phase": "top_green",
+  "mode": "normal",
   "emergency": false,
+  "mlMode": false,
   "override": null,
   "leds": {
     "top": "green",
@@ -31,6 +33,18 @@ Returns the current system state. Poll this every 100ms.
     "right": 5000,
     "yellow": 2000
   },
+  "queues": {
+    "top": 0.0,
+    "bottom": 0.15,
+    "left": 0.15,
+    "right": 0.15
+  },
+  "intensity": {
+    "top": "med",
+    "bottom": "med",
+    "left": "med",
+    "right": "med"
+  },
   "remaining": 2400,
   "brightness": 75,
   "threshold": 75,
@@ -42,10 +56,14 @@ Returns the current system state. Poll this every 100ms.
 | Field | Values |
 |---|---|
 | `phase` | `top_green`, `top_yellow`, `bottom_green`, `bottom_yellow`, `left_green`, `left_yellow`, `right_green`, `right_yellow`, `override`, `emergency` |
+| `mode` | `"normal"`, `"ml"`, `"override"`, or `"emergency"` — active control mode |
 | `emergency` | `true` while RFID emergency is active (auto-clears after 5s) |
+| `mlMode` | `true` when ML inference is controlling road selection and green duration |
 | `override` | `"top"`, `"bottom"`, `"left"`, `"right"`, or `null` |
 | `leds.X` | `"green"`, `"yellow"`, or `"red"` |
 | `timings` | Green phase durations in ms per direction, yellow duration shared |
+| `queues.X` | Simulated queue depth per road, 0.0–1.0 (updated every 500 ms) |
+| `intensity.X` | Arrival rate for each road: `"low"`, `"med"`, or `"high"` |
 | `remaining` | ms left in current phase |
 | `brightness` | LDR ambient brightness 0–100 (higher = brighter) |
 | `threshold` | Night threshold — calibrated from the first LDR reading at boot |
@@ -92,6 +110,35 @@ Toggle auto-dim on or off. When auto-dim is active and brightness drops below th
 **Body:** _(none required)_
 
 **Response:** `{ "ok": true, "autoDim": true }`
+
+---
+
+### POST /api/ml
+Enable or disable ML mode. When enabled, the TFLite model selects which road goes green and how long after each yellow phase, based on simulated queue depths and per-road arrival intensity.
+
+**Body:**
+```json
+{ "enabled": true }
+```
+
+**Response:** `{ "ok": true, "mlMode": true }`
+
+---
+
+### POST /api/intensity
+Set the simulated arrival intensity for one road. This controls how fast that road's queue accumulates while it is red, which in turn influences the ML model's road selection.
+
+**Body:**
+```json
+{ "road": "top", "level": "high" }
+```
+
+| Field | Values |
+|---|---|
+| `road` | `"top"`, `"bottom"`, `"left"`, `"right"` |
+| `level` | `"low"`, `"med"`, `"high"` |
+
+**Response:** `{ "ok": true }`
 
 ---
 

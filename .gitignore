@@ -21,9 +21,7 @@ Thumbs.db
 *.hex
 *.map
 
-# ML pipeline (preserved on ml-v1 branch)
-ml/
-src/ml_policy.cpp
-src/ml_policy.h
-src/qtable_data.cpp
 lib/
+
+# ML venv — large, not needed in git
+ml/.venv/

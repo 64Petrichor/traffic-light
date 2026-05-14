@@ -73,6 +73,11 @@ struct TrafficState {
     int      ldrBrightness     = 100;  // most recent LDR reading mapped to 0–100%
     int      ldrNightThreshold = 30;   // brightness level below which night mode activates
     bool     autoDimEnabled    = true;  // whether night mode (green duration doubling) is on
+
+    bool     mlMode       = false;
+    float    queues[4]    = {0.0f, 0.0f, 0.0f, 0.0f};  // normalised queue per road [top,bottom,left,right]
+    uint8_t  intensity[4] = {1, 1, 1, 1};               // arrival rate per road: 0=low 1=med 2=high
+    uint32_t mlDuration   = 5000;                        // green phase duration chosen by last ML inference (ms)
 };
 
 // The single global traffic state instance, defined in traffic.cpp.
@@ -102,3 +107,6 @@ const char* ledColor(int dir);
 // Returns the milliseconds remaining in the current phase.
 // Returns 0 during override (indefinite hold) and counts down during emergency.
 uint32_t timeRemaining();
+
+// Returns the active control mode: "normal", "ml", "override", or "emergency".
+const char* modeName();

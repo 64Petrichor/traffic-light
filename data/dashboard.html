@@ -5,18 +5,85 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Traffic Light Dashboard</title>
     <link rel="stylesheet" href="/style.css">
+    <style>
+        .mode-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            background: #1a1a2e;
+            color: #aaa;
+            border: 1px solid #444;
+        }
+        .mode-badge.normal     { color: #00ff66; border-color: #00ff66; background: #00ff6611; }
+        .mode-badge.ml         { color: #00e1ff; border-color: #00e1ff; background: #00e1ff11; }
+        .mode-badge.override   { color: #ffd000; border-color: #ffd000; background: #ffd00011; }
+        .mode-badge.emergency  { color: #ff4444; border-color: #ff4444; background: #ff444411; }
+        .mode-badge.simulation { color: #bf7fff; border-color: #bf7fff; background: #bf7fff11; }
+
+        /* Queue % label — absolutely positioned just below each road box */
+        .queue-label {
+            position: absolute;
+            bottom: -20px;
+            left: 0; right: 0;
+            font-size: 0.70rem;
+            font-weight: bold;
+            text-align: center;
+            transition: color 0.4s;
+            color: #555;
+            pointer-events: none;
+        }
+        .intersection { padding-bottom: 28px; }
+
+        /* Road intensity + queue depth rows */
+        .road-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .road-label { width: 54px; font-size: 0.78rem; font-weight: bold; color: #00e1ff; flex-shrink: 0; }
+        .int-group  { display: flex; gap: 4px; flex-shrink: 0; }
+        .int-btn {
+            padding: 3px 8px; font-size: 0.68rem;
+            border: 1px solid #444; background: #1a1a2e; color: #666;
+            cursor: pointer; border-radius: 3px; transition: all 0.15s;
+        }
+        .int-btn.active { background: #00e1ff22; color: #00e1ff; border-color: #00e1ff; }
+        .queue-wrap { flex: 1; height: 10px; background: #0d0d1a; border-radius: 5px; overflow: hidden; border: 1px solid #2a2a3e; }
+        .queue-bar  { height: 100%; width: 0%; border-radius: 5px; transition: width 0.4s, background 0.4s; }
+        .queue-pct  { width: 36px; font-size: 0.78rem; text-align: right; color: #888; flex-shrink: 0; }
+
+    </style>
 </head>
 <body>
 
     <div class="main-wrapper">
+
+        <!-- ── System Status ─────────────────────────────────────────────── -->
         <div class="panel">
             <div class="panel-title">System Status</div>
             <div class="status-grid">
                 <div class="status-box"><span class="val" id="ui-phase">--</span><small>PHASE</small></div>
                 <div class="status-box"><span class="val" id="ui-timer">0s</span><small>REMAINING</small></div>
             </div>
+            <div style="margin-top:10px;text-align:center">
+                <span id="ui-mode-badge" class="mode-badge">--</span>
+            </div>
         </div>
 
+        <!-- ── ML Control ─────────────────────────────────────────────────── -->
+        <div class="panel">
+            <div class="panel-title">ML Control</div>
+            <button id="btn-ml" onclick="toggleML()" style="margin-bottom:10px">Enable ML Mode</button>
+            <small style="color:#555;line-height:1.6;display:block">
+                TFLite model trained on a simulated traffic light scenarios based on live queue depth.
+            </small>
+        </div>
+
+        <!-- ── Brightness ─────────────────────────────────────────────────── -->
         <div class="ldr-card">
             <h2>&#x1F506; Brightness <span id="night-badge" class="dim-badge" style="display:none">NIGHT MODE</span></h2>
             <div class="ldr-row">
@@ -29,24 +96,30 @@
             <button class="btn-dim" onclick="toggleDim()" id="dim-btn">-- Auto-Dim</button>
         </div>
 
+        <!-- ── Intersection (queue % overlaid on each road) ───────────────── -->
         <div class="intersection">
-            <div class="road v" id="top-road">
+            <div class="road v" id="top-road" style="position:relative">
                 <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+                <div class="queue-label" id="ql-top" style="top:-20px;bottom:auto">0%</div>
             </div>
             <div class="mid-section">
-                <div class="road" id="left-road">
+                <div class="road" id="left-road" style="position:relative">
                     <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+                    <div class="queue-label" id="ql-left">0%</div>
                 </div>
                 <div class="center-hub"></div>
-                <div class="road" id="right-road">
+                <div class="road" id="right-road" style="position:relative">
                     <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+                    <div class="queue-label" id="ql-right">0%</div>
                 </div>
             </div>
-            <div class="road v" id="bottom-road">
+            <div class="road v" id="bottom-road" style="position:relative">
                 <div class="light red"></div><div class="light yellow"></div><div class="light green"></div>
+                <div class="queue-label" id="ql-bottom">0%</div>
             </div>
         </div>
 
+        <!-- ── Manual Override ────────────────────────────────────────────── -->
         <div class="panel">
             <div class="panel-title">Manual Green Override</div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
@@ -58,16 +131,62 @@
             <button class="btn-clear" onclick="clearOverride()">RESTORE AUTO CYCLE</button>
         </div>
 
+        <!-- ── Road Intensity + Queue Depth ──────────────────────────────── -->
         <div class="panel">
-            <div class="panel-title">Phase Duration (ms)</div>
-            <div class="input-group"><span>Green Duration (All):</span> <input type="number" id="in-green" value="5000"></div>
-            <div class="input-group"><span>Yellow Duration:</span> <input type="number" id="in-yellow" value="2000"></div>
-            <button style="background: linear-gradient(135deg, #1a4a8a, #00e1ff); color: white; border:none;" onclick="applySettings()">UPDATE ALL TIMINGS</button>
+            <div class="panel-title">Road Intensity &amp; Queue Depth</div>
+
+            <div class="road-row">
+                <span class="road-label">TOP</span>
+                <div class="int-group">
+                    <button class="int-btn" id="int-top-low"  onclick="setIntensity('top','low')">LOW</button>
+                    <button class="int-btn" id="int-top-med"  onclick="setIntensity('top','med')">MED</button>
+                    <button class="int-btn" id="int-top-high" onclick="setIntensity('top','high')">HIGH</button>
+                </div>
+                <div class="queue-wrap"><div class="queue-bar" id="q-top"></div></div>
+                <span class="queue-pct" id="q-top-pct">0%</span>
+            </div>
+
+            <div class="road-row">
+                <span class="road-label">BOTTOM</span>
+                <div class="int-group">
+                    <button class="int-btn" id="int-bottom-low"  onclick="setIntensity('bottom','low')">LOW</button>
+                    <button class="int-btn" id="int-bottom-med"  onclick="setIntensity('bottom','med')">MED</button>
+                    <button class="int-btn" id="int-bottom-high" onclick="setIntensity('bottom','high')">HIGH</button>
+                </div>
+                <div class="queue-wrap"><div class="queue-bar" id="q-bottom"></div></div>
+                <span class="queue-pct" id="q-bottom-pct">0%</span>
+            </div>
+
+            <div class="road-row">
+                <span class="road-label">LEFT</span>
+                <div class="int-group">
+                    <button class="int-btn" id="int-left-low"  onclick="setIntensity('left','low')">LOW</button>
+                    <button class="int-btn" id="int-left-med"  onclick="setIntensity('left','med')">MED</button>
+                    <button class="int-btn" id="int-left-high" onclick="setIntensity('left','high')">HIGH</button>
+                </div>
+                <div class="queue-wrap"><div class="queue-bar" id="q-left"></div></div>
+                <span class="queue-pct" id="q-left-pct">0%</span>
+            </div>
+
+            <div class="road-row">
+                <span class="road-label">RIGHT</span>
+                <div class="int-group">
+                    <button class="int-btn" id="int-right-low"  onclick="setIntensity('right','low')">LOW</button>
+                    <button class="int-btn" id="int-right-med"  onclick="setIntensity('right','med')">MED</button>
+                    <button class="int-btn" id="int-right-high" onclick="setIntensity('right','high')">HIGH</button>
+                </div>
+                <div class="queue-wrap"><div class="queue-bar" id="q-right"></div></div>
+                <span class="queue-pct" id="q-right-pct">0%</span>
+            </div>
+
+            <small style="color:#555;display:block;margin-top:6px">
+                Queue = normalised vehicle count (0–100%). Updates every 500 ms.
+            </small>
         </div>
+
     </div>
 
     <pre id="debug" style="display:none"></pre>
-
     <script src="/script.js"></script>
 </body>
 </html>

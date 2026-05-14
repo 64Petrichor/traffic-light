@@ -12,7 +12,7 @@ The ESP32 runs one infinite loop. Every iteration it does three things:
 
 1. Check if an RFID card is present
 2. Check the ambient light sensor
-3. Advance the traffic light
+3. Advance the traffic light (which also updates ML queue simulation internally)
 
 That's it. No operating system, no threads, no scheduler — just a tight loop running hundreds of times per second.
 
@@ -71,6 +71,25 @@ The LDR brightness (0–100%) is printed to Serial every second for monitoring.
 
 ---
 
+### Interruption 3 — ML mode
+
+When ML mode is enabled (via the dashboard or `POST /api/ml`), the system hands routing decisions to a TensorFlow Lite model stored in flash (`traffic_model.tflite`).
+
+The model receives 8 inputs per inference (4 queue levels + 4 arrival intensities) and returns:
+- which road to make green next
+- how long that green phase should last (5–15 seconds)
+
+**Queue simulation** runs every 500 ms regardless of mode:
+- The currently-green road drains at a fixed rate
+- All red roads accumulate based on their configured arrival intensity (low / med / high)
+- Queue values stay in [0, 1]
+
+Inference fires at the end of every yellow phase. In normal mode the same yellow-to-green transition happens; in ML mode the model picks the road and duration instead of the fixed round-robin.
+
+ML mode can be toggled on or off at any time without resetting the cycle. The traffic `mode` field in the API reports `"normal"`, `"ml"`, `"override"`, or `"emergency"`.
+
+---
+
 ### The web dashboard
 
 The ESP32 hosts its own WiFi hotspot — no router or internet connection needed. Connect to it and open a browser to reach the dashboard.
@@ -79,10 +98,11 @@ The dashboard polls the ESP32 every **100 ms** for live state and lets you:
 
 - See the current color of each road in real time
 - See how much time is left in the current phase
-- Force any road green (override, keeps it green until user turns it off, then traffic return to cycle)
+- Force any road green (override, keeps it green until user turns it off, then traffic returns to cycle)
 - Release an override and return to normal cycle
 - Change how long each road stays green or yellow
 - See ambient brightness and toggle night mode
+- Enable or disable ML mode and set per-road arrival intensity
 
 ---
 
@@ -105,6 +125,8 @@ The solution: a **74HC595N shift register** handles all 8 red and yellow LEDs us
 | Emergency red LED | Indicates active emergency state |
 | LDR | Ambient light sensor for night mode |
 
+The ML model (`traffic_model.tflite`) is stored in the ESP32 flash filesystem alongside the dashboard files. No additional hardware is required for ML mode.
+
 Full pin mapping: [`traffic light pins.md`](traffic%20light%20pins.md)
 
 ---
@@ -116,8 +138,15 @@ src/
   main.cpp          — entry point; setup, loop, RFID polling, LDR sampling
   traffic.h/.cpp    — traffic state machine and LED output driver
   webserver.h/.cpp  — WiFi access point, async HTTP server, REST API
+  ml.h/.cpp         — TFLite inference and queue simulation
 data/
   dashboard.html    — web dashboard served from ESP32 flash filesystem
+  style.css         — dashboard styles
+  script.js         — dashboard polling loop and API helpers
+  traffic_model.tflite — trained TFLite model loaded by ml.cpp at boot
+ml/
+  traffic_light.ipynb — Jupyter notebook used to train the model
+  traffic_model.tflite — source model (copy to data/ before uploadfs)
 API.md              — REST API reference
 traffic light pins.md — full hardware wiring reference
 ```
@@ -162,7 +191,7 @@ pio run -t upload
 
 ## Dashboard Development
 
-The dashboard is a single HTML file at `data/dashboard.html`. The polling loop and all API helper functions (`override()`, `clearOverride()`, `setTimings()`, `toggleDim()`) are already wired up — add your UI inside `onStateUpdate(s)`.
+The dashboard is split across three files in `data/`: `dashboard.html`, `style.css`, and `script.js`. The polling loop and all API helper functions are in `script.js` — add your UI logic inside `onStateUpdate(s)` in `script.js`.
 
 The `state` object available in `onStateUpdate` has this shape:
 
@@ -171,7 +200,9 @@ The `state` object available in `onStateUpdate` has this shape:
     phase:     "top_green" | "top_yellow" | "bottom_green" | "bottom_yellow" |
                "left_green" | "left_yellow" | "right_green" | "right_yellow" |
                "override" | "emergency",
+    mode:      "normal" | "ml" | "override" | "emergency",
     emergency: true | false,
+    mlMode:    true | false,
     override:  "top" | "bottom" | "left" | "right" | null,
     leds: {
         top:    "green" | "yellow" | "red",
@@ -180,6 +211,18 @@ The `state` object available in `onStateUpdate` has this shape:
         right:  "green" | "yellow" | "red"
     },
     timings:   { top: 5000, bottom: 5000, left: 5000, right: 5000, yellow: 2000 },
+    queues: {
+        top:    0.0,   // normalised queue depth 0–1
+        bottom: 0.15,
+        left:   0.15,
+        right:  0.15
+    },
+    intensity: {
+        top:    "low" | "med" | "high",   // arrival rate per road
+        bottom: "low" | "med" | "high",
+        left:   "low" | "med" | "high",
+        right:  "low" | "med" | "high"
+    },
     remaining: 2400,    // ms left in current phase
     brightness: 75,     // LDR ambient brightness 0–100
     threshold:  75,     // night threshold set at boot

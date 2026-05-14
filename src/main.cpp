@@ -16,6 +16,7 @@
 #include <MFRC522.h>
 #include "traffic.h"
 #include "webserver.h"
+#include "ml.h"
 
 #define SS_PIN  5
 #define RST_PIN 4
@@ -78,6 +79,7 @@ void setup() {
     rfid.PCD_Init();
     trafficInit();
     webserverInit();
+    mlInit();
 
     // Calibrate night threshold to ambient brightness at boot
     traffic.ldrBrightness      = map(analogRead(LDR_PIN), 0, 4095, 0, 100);
