@@ -71,22 +71,21 @@ The LDR brightness (0–100%) is printed to Serial every second for monitoring.
 
 ---
 
-### Interruption 3 — ML and RL modes
+### Interruption 3 — ML mode
 
-The dashboard's Mode Control panel lets you switch between three modes at runtime:
+The dashboard's Mode Control panel lets you switch between two modes at runtime:
 
 - **Normal** — fixed round-robin cycle (Top → Bottom → Left → Right), each road using its configured green duration. Baseline: ~30% avg cars waiting.
 - **Greedy ML** — supervised TFLite model (`traffic_model.tflite`, ~4.7 KB) trained to imitate a greedy heuristic. Selects the road with the highest queue × intensity score and sets a proportional green duration. ~24% avg cars waiting on imbalanced traffic.
-- **RL** — PPO-trained TFLite model (`traffic_rl_model.tflite`, ~4.8 KB) with a wider actor-critic network. Outperforms the supervised model by up to 40% on imbalanced traffic; matches round-robin on balanced traffic. ~20% avg cars waiting.
 
-Both ML models load at boot from LittleFS. They receive 8 inputs per inference (4 queue depths + 4 arrival intensities) and return which road to make green next and how long the green phase should last (5–15 seconds).
+The ML model loads at boot from LittleFS. It receives 8 inputs per inference (4 queue depths + 4 arrival intensities) and returns which road to make green next and how long the green phase should last (5–15 seconds).
 
 **Queue simulation** runs every 500 ms regardless of mode:
 - The currently-green road drains at a fixed rate
 - All red roads accumulate based on their configured arrival intensity (low / med / high)
 - Queue values stay in [0, 1]
 
-Inference fires at the end of every yellow phase. Switching modes takes effect at the next yellow phase with no cycle reset. The `mode` field in the API reports `"normal"`, `"greedy"`, `"rl"`, `"override"`, or `"emergency"`.
+Inference fires at the end of every yellow phase. Switching modes takes effect at the next yellow phase with no cycle reset. The `mode` field in the API reports `"normal"`, `"greedy"`, `"override"`, or `"emergency"`.
 
 ---
 
@@ -102,7 +101,7 @@ The dashboard polls the ESP32 every **100 ms** for live state and lets you:
 - Release an override and return to normal cycle
 - Change how long each road stays green or yellow
 - See ambient brightness and toggle night mode
-- Switch between Normal, Greedy ML, and RL modes and set per-road arrival intensity
+- Switch between Normal and Greedy ML modes and set per-road arrival intensity
 
 ---
 
@@ -125,7 +124,7 @@ The solution: a **74HC595N shift register** handles all 8 red and yellow LEDs us
 | Emergency red LED | Indicates active emergency state |
 | LDR | Ambient light sensor for night mode |
 
-Both ML models (`traffic_model.tflite` and `traffic_rl_model.tflite`) are stored in the ESP32 flash filesystem alongside the dashboard files. No additional hardware is required for ML or RL mode.
+The ML model (`traffic_model.tflite`) is stored in the ESP32 flash filesystem alongside the dashboard files. No additional hardware is required for ML mode.
 
 Full pin mapping: [`traffic light pins.md`](traffic%20light%20pins.md)
 
@@ -144,11 +143,9 @@ data/
   style.css              — dashboard styles
   script.js              — dashboard polling loop and API helpers
   traffic_model.tflite   — supervised (Greedy ML) TFLite model loaded at boot
-  traffic_rl_model.tflite — RL (PPO) TFLite model loaded at boot
 ml/
-  traffic_model.ipynb     — Jupyter notebook: simulation, training, export
+  traffic_light.ipynb     — Jupyter notebook: simulation, training, export
   traffic_model.tflite    — supervised model source; copied to data/ for upload
-  traffic_rl_model.tflite — RL model source; copied to data/ for upload
 API.md              — REST API reference
 traffic light pins.md — full hardware wiring reference
 ```
@@ -204,9 +201,9 @@ The `state` object available in `onStateUpdate` has this shape:
     phase:     "top_green" | "top_yellow" | "bottom_green" | "bottom_yellow" |
                "left_green" | "left_yellow" | "right_green" | "right_yellow" |
                "override" | "emergency",
-    mode:      "normal" | "greedy" | "rl" | "override" | "emergency",
+    mode:      "normal" | "greedy" | "override" | "emergency",
     emergency: true | false,
-    mlMode:    "normal" | "greedy" | "rl",
+    mlMode:    "normal" | "greedy",
     override:  "top" | "bottom" | "left" | "right" | null,
     leds: {
         top:    "green" | "yellow" | "red",

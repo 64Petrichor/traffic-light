@@ -9,7 +9,7 @@ Source code for an adaptive traffic light controller running on ESP32. The firmw
 | `main.cpp` | Entry point: SPI init, RFID polling, LDR sampling, WiFi/server setup, calls `mlInit()`, main loop |
 | `traffic.h` / `traffic.cpp` | Traffic light state machine, LED control, phase logic |
 | `webserver.h` / `webserver.cpp` | WiFi AP creation, LittleFS mount, async REST API server |
-| `ml.h` / `ml.cpp` | TFLite inference for supervised and RL models, queue simulation |
+| `ml.h` / `ml.cpp` | TFLite inference for supervised greedy model, queue simulation |
 
 ## Architecture
 
@@ -43,7 +43,7 @@ LEFT_GREEN -> LEFT_YELLOW -> RIGHT_GREEN -> RIGHT_YELLOW -> repeat
 | `ldrBrightness` | `int` | Raw ADC reading from LDR on GPIO 34 |
 | `ldrNightThreshold` | `int` | Calibrated at boot |
 | `autoDimEnabled` | `bool` | Whether night mode scaling is active |
-| `mlMode` | `MLMode` | `ML_NORMAL`, `ML_GREEDY`, or `ML_RL` |
+| `mlMode` | `MLMode` | `ML_NORMAL` or `ML_GREEDY` |
 | `queues[4]` | `float` | Normalized queue depth per road [0.0, 1.0] |
 | `intensity[4]` | `int` | Arrival rate per road: 0=low, 1=med, 2=high |
 | `mlDuration` | `int` | Green phase duration from last ML inference (ms) |
@@ -60,18 +60,17 @@ When `ldrBrightness < ldrNightThreshold` and `autoDimEnabled` is true, green pha
 
 ## ML Inference
 
-Defined in `ml.h` / `ml.cpp`. Two TFLite models are loaded from LittleFS at boot via `mlInit()`.
+Defined in `ml.h` / `ml.cpp`. One TFLite model is loaded from LittleFS at boot via `mlInit()`.
 
 ### Models
 
 | File | Type | Size | Fallback |
 |---|---|---|---|
 | `traffic_model.tflite` | Supervised / greedy | ~4.7 KB | Required — `mlInit()` returns false if missing |
-| `traffic_rl_model.tflite` | Reinforcement learning (PPO) | ~4.8 KB | Optional — supervised mode still works |
 
 ### Input / Output
 
-Both models share the same interface:
+The model uses the following interface:
 
 - **Input:** 8 floats — `[q_top, q_bottom, q_left, q_right, i_top, i_bottom, i_left, i_right]`
 - **Output:** road index (argmax of softmax) + green duration in seconds, clamped to [5, 15]
@@ -106,12 +105,12 @@ Defined in `webserver.h` / `webserver.cpp`. Creates a WiFi access point and serv
 | `/api/override` | POST | `{"direction":"top"}` | Force one road green, or clear override |
 | `/api/timing` | POST | `{"top":5000,...}` | Update per-direction green/yellow durations |
 | `/api/dim` | POST | — | Toggle auto-dim night mode |
-| `/api/ml` | POST | `{"mode":"normal"\|"greedy"\|"rl"}` | Switch inference mode |
+| `/api/ml` | POST | `{"mode":"normal"\|"greedy"}` | Switch inference mode |
 | `/api/intensity` | POST | `{"road":"top","level":"high"}` | Set per-road arrival rate |
 
 ### `/api/status` Response Fields
 
-`phase`, `mode`, `emergency`, `mlMode` (string: `"normal"` / `"greedy"` / `"rl"`), `override`, `leds`, `timings`, `queues`, `intensity`, `remaining`, `brightness`, `threshold`, `autoDim`, `nightMode`
+`phase`, `mode`, `emergency`, `mlMode` (string: `"normal"` / `"greedy"`), `override`, `leds`, `timings`, `queues`, `intensity`, `remaining`, `brightness`, `threshold`, `autoDim`, `nightMode`
 
 ## Build
 
