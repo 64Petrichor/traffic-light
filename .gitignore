@@ -8,6 +8,7 @@
 # VSCode & Tools
 .vscode/
 .claude/
+.venv/
 
 # OS files
 .DS_Store
@@ -25,3 +26,6 @@ lib/
 
 # ML venv — large, not needed in git
 ml/.venv/
+
+# Auto-generated from notebook — run ml/traffic_light.ipynb to regenerate
+src/ml_weights.h

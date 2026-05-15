@@ -58,11 +58,14 @@ void webserverInit() {
     });
 
     server.on("/api/status", HTTP_GET, [](AsyncWebServerRequest* req) {
-        StaticJsonDocument<768> doc;
+        StaticJsonDocument<896> doc;
         doc["phase"]     = phaseName();
         doc["mode"]      = modeName();
         doc["emergency"] = traffic.emergency;
-        doc["mlMode"]    = traffic.mlMode;
+        const char* mlModeStr = "normal";
+        if (traffic.mlMode == TrafficState::ML_GREEDY) mlModeStr = "greedy";
+        else if (traffic.mlMode == TrafficState::ML_RL) mlModeStr = "rl";
+        doc["mlMode"] = mlModeStr;
 
         if (traffic.overrideDir >= 0)
             doc["override"] = dirName(traffic.overrideDir);
@@ -99,6 +102,8 @@ void webserverInit() {
         doc["threshold"]  = traffic.ldrNightThreshold;
         doc["autoDim"]    = traffic.autoDimEnabled;
         doc["nightMode"]  = traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold;
+        doc["supervisedLoaded"] = traffic.supervisedLoaded;
+        doc["rlLoaded"]         = traffic.rlLoaded;
 
         String body;
         serializeJson(doc, body);
@@ -147,7 +152,7 @@ void webserverInit() {
                                          : "{\"ok\":true,\"autoDim\":false}");
     });
 
-    // POST /api/ml  { "enabled": true|false }
+    // POST /api/ml  { "mode": "normal"|"greedy"|"rl" }
     server.on("/api/ml", HTTP_POST,
         [](AsyncWebServerRequest* req) {},
         nullptr,
@@ -157,11 +162,15 @@ void webserverInit() {
                 req->send(400, "application/json", "{\"error\":\"bad json\"}");
                 return;
             }
-            traffic.mlMode = doc["enabled"].as<bool>();
-            Serial.printf("[ML] Mode %s\n", traffic.mlMode ? "ENABLED" : "DISABLED");
-            req->send(200, "application/json",
-                      traffic.mlMode ? "{\"ok\":true,\"mlMode\":true}"
-                                     : "{\"ok\":true,\"mlMode\":false}");
+            const char* mode = doc["mode"] | "normal";
+            if (strcmp(mode, "greedy") == 0)      traffic.mlMode = TrafficState::ML_GREEDY;
+            else if (strcmp(mode, "rl") == 0)     traffic.mlMode = TrafficState::ML_RL;
+            else                                   traffic.mlMode = TrafficState::ML_NORMAL;
+            Serial.printf("[ML] Mode set to %s\n", mode);
+            String body = "{\"ok\":true,\"mlMode\":\"";
+            body += mode;
+            body += "\"}";
+            req->send(200, "application/json", body);
         }
     );
 

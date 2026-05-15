@@ -15,8 +15,9 @@
 // Intensity multipliers indexed by traffic.intensity[i]: 0=low, 1=med, 2=high
 extern const float ML_INTENSITY_MUL[3];
 
-// Loads traffic_model.tflite from LittleFS and allocates the interpreter.
-// Call once from setup(), after webserverInit() (which mounts LittleFS).
+// Loads traffic_model.tflite and traffic_rl_model.tflite from LittleFS and
+// allocates both interpreters. Call once from setup(), after webserverInit()
+// (which mounts LittleFS). Returns false only if the supervised model fails.
 bool mlInit();
 
 // Updates all four queue floats on a 500 ms timer. Always call from trafficUpdate()
@@ -26,3 +27,7 @@ void mlQueueTick(uint32_t now);
 // Runs one TFLite inference using current queues and intensities.
 // Sets *road (0–3) and *durationMs. Returns false if model is not loaded.
 bool mlInfer(int* road, uint32_t* durationMs);
+
+// Runs one TFLite inference using the RL (PPO) model.
+// Sets *road (0–3) and *durationMs. Returns false if RL model is not loaded.
+bool mlRLInfer(int* road, uint32_t* durationMs);

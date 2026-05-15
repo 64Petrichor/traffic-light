@@ -18,7 +18,7 @@ Returns the current system state. Poll this every 100ms.
   "phase": "top_green",
   "mode": "normal",
   "emergency": false,
-  "mlMode": false,
+  "mlMode": "normal",
   "override": null,
   "leds": {
     "top": "green",
@@ -56,9 +56,9 @@ Returns the current system state. Poll this every 100ms.
 | Field | Values |
 |---|---|
 | `phase` | `top_green`, `top_yellow`, `bottom_green`, `bottom_yellow`, `left_green`, `left_yellow`, `right_green`, `right_yellow`, `override`, `emergency` |
-| `mode` | `"normal"`, `"ml"`, `"override"`, or `"emergency"` — active control mode |
+| `mode` | `"normal"`, `"greedy"`, `"rl"`, `"override"`, or `"emergency"` — active control mode |
 | `emergency` | `true` while RFID emergency is active (auto-clears after 5s) |
-| `mlMode` | `true` when ML inference is controlling road selection and green duration |
+| `mlMode` | Active ML mode: `"normal"` (round-robin), `"greedy"` (supervised model), or `"rl"` (PPO model) |
 | `override` | `"top"`, `"bottom"`, `"left"`, `"right"`, or `null` |
 | `leds.X` | `"green"`, `"yellow"`, or `"red"` |
 | `timings` | Green phase durations in ms per direction, yellow duration shared |
@@ -114,14 +114,20 @@ Toggle auto-dim on or off. When auto-dim is active and brightness drops below th
 ---
 
 ### POST /api/ml
-Enable or disable ML mode. When enabled, the TFLite model selects which road goes green and how long after each yellow phase, based on simulated queue depths and per-road arrival intensity.
+Set the active control mode. When set to `greedy` or `rl`, the corresponding TFLite model selects which road goes green and for how long after each yellow phase, based on simulated queue depths and per-road arrival intensity. Takes effect at the next yellow-to-green transition.
 
 **Body:**
 ```json
-{ "enabled": true }
+{ "mode": "greedy" }
 ```
 
-**Response:** `{ "ok": true, "mlMode": true }`
+| `mode` | Effect |
+|---|---|
+| `"normal"` | Round-robin cycle using configured durations |
+| `"greedy"` | Supervised TFLite model selects road and duration |
+| `"rl"` | PPO TFLite model selects road and duration |
+
+**Response:** `{ "ok": true, "mlMode": "greedy" }`
 
 ---
 

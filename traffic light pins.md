@@ -313,7 +313,7 @@ Pin Mapping & Wiring Reference | ESP32 Platform
   </tbody>
 </table>
 
-## 7. Power Rails
+## 8. Power Rails
 
 3.3V rail → ESP32 3.3V output → RFID-RC522 VCC, 74HC595N VCC & MR
 GND → Common ground across all components (ESP32, 595, RFID, LEDs)

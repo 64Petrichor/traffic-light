@@ -68,3 +68,26 @@ button:active { background: #374151; transform: scale(0.96); }
 /* Inputs */
 .input-group { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 input[type="number"] { width: 80px; background: #05070f; border: 1px solid rgba(0, 225, 255, 0.3); color: #fff; padding: 10px; border-radius: 8px; text-align: center; font-size: 1.1rem; font-weight: bold; }
+
+/* Mode tab selector */
+.mode-tabs { display: flex; border-radius: 8px; overflow: hidden; border: 1px solid rgba(0,225,255,0.2); }
+.mode-tab {
+    flex: 1; padding: 10px 4px; border: none; border-radius: 0;
+    background: rgba(0,0,0,0.3); color: #666; cursor: pointer; width: auto;
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    border-right: 1px solid rgba(0,225,255,0.1); transition: background 0.2s, color 0.2s;
+}
+.mode-tab:last-child { border-right: none; }
+.mode-tab:active { transform: none; }
+.mode-tab.active { background: rgba(0,225,255,0.12); color: #00e1ff; box-shadow: inset 0 0 12px rgba(0,225,255,0.1); }
+.mode-tab-label { font-size: 0.82rem; font-weight: bold; }
+.mode-stat { font-size: 0.62rem; color: #555; }
+.mode-tab.active .mode-stat { color: #00e1ff99; }
+
+/* Override cross layout */
+.override-cross { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 5px; }
+.override-mid-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+.ovr-center { flex: 1; height: 44px; }
+.ovr-btn { width: auto; }
+.ovr-top, .ovr-bottom { width: 50%; }
+.ovr-left, .ovr-right { flex: 1; }

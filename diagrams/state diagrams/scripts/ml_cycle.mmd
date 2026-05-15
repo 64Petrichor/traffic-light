@@ -1,0 +1,9 @@
+stateDiagram-v2
+
+    [*] --> Green
+
+    state "Green — model-chosen road (5–15 s)" as Green
+    state "Yellow — all roads (2 s)" as Yellow
+
+    Green  --> Yellow : ML green duration expires
+    Yellow --> Green  : mlInfer selects highest-queue road
