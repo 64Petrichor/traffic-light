@@ -53,7 +53,7 @@ static uint32_t phaseDuration(Phase p) {
             case TOP_GREEN:
             case BOTTOM_GREEN:
             case LEFT_GREEN:
-            case RIGHT_GREEN: return traffic.mlDuration;
+            case RIGHT_GREEN: return traffic.mlDuration / traffic.simSpeed;
             default: break;
         }
     }
@@ -63,11 +63,11 @@ static uint32_t phaseDuration(Phase p) {
         case BOTTOM_GREEN: base = traffic.timings.bottom; break;
         case LEFT_GREEN:   base = traffic.timings.left;   break;
         case RIGHT_GREEN:  base = traffic.timings.right;  break;
-        default:           return traffic.timings.yellow;
+        default:           return traffic.timings.yellow / traffic.simSpeed;
     }
     if (traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold)
-        return (uint32_t)(base * LDR_NIGHT_MULTIPLIER);
-    return base;
+        return (uint32_t)(base * LDR_NIGHT_MULTIPLIER) / traffic.simSpeed;
+    return base / traffic.simSpeed;
 }
 
 static Phase nextPhase(Phase p) {
@@ -115,7 +115,7 @@ void trafficUpdate() {
     mlQueueTick(now);  // always update queues, even during override/emergency
 
     if (traffic.emergency) {
-        if (now - traffic.phaseStart >= 5000) {
+        if (now - traffic.phaseStart >= 5000 / traffic.simSpeed) {
             traffic.emergency = false;
             digitalWrite(EMERG_PIN, LOW);
             traffic.phase      = TOP_GREEN;
@@ -216,8 +216,9 @@ const char* ledColor(int dir) {
 
 uint32_t timeRemaining() {
     if (traffic.emergency) {
+        uint32_t dur     = 5000 / traffic.simSpeed;
         uint32_t elapsed = millis() - traffic.phaseStart;
-        return elapsed >= 5000 ? 0 : 5000 - elapsed;
+        return elapsed >= dur ? 0 : dur - elapsed;
     }
     if (traffic.overrideDir >= 0) return 0;
 

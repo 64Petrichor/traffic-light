@@ -39,6 +39,31 @@
         }
         .intersection { padding-bottom: 28px; }
 
+        /* Speed control buttons */
+        .speed-tabs {
+            display: flex;
+            gap: 6px;
+            margin-top: 4px;
+        }
+        .speed-tab {
+            flex: 1;
+            padding: 7px 4px;
+            background: #1a1a2e;
+            border: 1px solid #444;
+            color: #666;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.15s;
+        }
+        .speed-tab.active {
+            background: #bf7fff11;
+            color: #bf7fff;
+            border-color: #bf7fff;
+        }
+
         /* Road intensity + queue depth rows */
         .road-row {
             display: flex;
@@ -122,6 +147,19 @@
             </div>
         </div>
 
+        <!-- ── Simulation Speed ──────────────────────────────────────────────── -->
+        <div class="panel">
+            <div class="panel-title">Simulation Speed</div>
+            <div class="speed-tabs">
+                <button class="speed-tab" id="spd-1" onclick="setSpeed(1)">2/s<br><small>500 ms</small></button>
+                <button class="speed-tab" id="spd-2" onclick="setSpeed(2)">4/s<br><small>250 ms</small></button>
+                <button class="speed-tab" id="spd-5" onclick="setSpeed(5)">10/s<br><small>100 ms</small></button>
+            </div>
+            <small style="color:#555;line-height:1.6;display:block;margin-top:8px">
+                Scales queue ticks and phase durations. Faster speeds let the ML modes warm up quicker.
+            </small>
+        </div>
+
         <!-- ── Manual Override ────────────────────────────────────────────── -->
         <div class="panel">
             <div class="panel-title">Manual Green Override</div>
@@ -186,7 +224,7 @@
             </div>
 
             <small style="color:#555;display:block;margin-top:6px">
-                Queue = normalised vehicle count (0–100%). Updates every 500 ms.
+                Queue = normalised vehicle count (0–100%). Rate scales with simulation speed.
             </small>
         </div>
 

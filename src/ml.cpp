@@ -35,7 +35,7 @@ bool mlInit() {
 
 void mlQueueTick(uint32_t now) {
     static uint32_t lastTick = 0;
-    if (now - lastTick < ML_TICK_MS) return;
+    if (now - lastTick < (uint32_t)(ML_TICK_MS / traffic.simSpeed)) return;
     lastTick = now;
 
     int greenRoad = -1;
@@ -78,7 +78,7 @@ bool mlInfer(int* road, uint32_t* durationMs) {
     *road = best;
 
     float dur = fmaxf(ML_MIN_GREEN_S, fminf(ML_MAX_GREEN_S, dur_out[0]));
-    *durationMs = (uint32_t)(dur * 1000.0f);
+    *durationMs = (uint32_t)(dur * 1000.0f);  // simSpeed scaling applied in phaseDuration()
 
     Serial.printf("[ML] road=%d dur=%.1fs q=[%.2f %.2f %.2f %.2f]\n",
                   best, dur,
@@ -105,7 +105,7 @@ bool mlRLInfer(int* road, uint32_t* durationMs) {
     *road = best;
 
     float dur = fmaxf(ML_MIN_GREEN_S, fminf(ML_MAX_GREEN_S, dur_out[0]));
-    *durationMs = (uint32_t)(dur * 1000.0f);
+    *durationMs = (uint32_t)(dur * 1000.0f);  // simSpeed scaling applied in phaseDuration()
 
     Serial.printf("[RL] road=%d dur=%.1fs q=[%.2f %.2f %.2f %.2f]\n",
                   best, dur,

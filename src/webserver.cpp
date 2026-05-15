@@ -58,7 +58,7 @@ void webserverInit() {
     });
 
     server.on("/api/status", HTTP_GET, [](AsyncWebServerRequest* req) {
-        StaticJsonDocument<896> doc;
+        StaticJsonDocument<960> doc;
         doc["phase"]     = phaseName();
         doc["mode"]      = modeName();
         doc["emergency"] = traffic.emergency;
@@ -104,6 +104,7 @@ void webserverInit() {
         doc["nightMode"]  = traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold;
         doc["supervisedLoaded"] = traffic.supervisedLoaded;
         doc["rlLoaded"]         = traffic.rlLoaded;
+        doc["simSpeed"]         = traffic.simSpeed;
 
         String body;
         serializeJson(doc, body);
@@ -170,6 +171,27 @@ void webserverInit() {
             String body = "{\"ok\":true,\"mlMode\":\"";
             body += mode;
             body += "\"}";
+            req->send(200, "application/json", body);
+        }
+    );
+
+    // POST /api/speed  { "speed": 1|2|5 }  — 1=×1 (500ms/tick), 2=×2 (250ms/tick), 5=×5 (100ms/tick)
+    server.on("/api/speed", HTTP_POST,
+        [](AsyncWebServerRequest* req) {},
+        nullptr,
+        [](AsyncWebServerRequest* req, uint8_t* data, size_t len, size_t, size_t) {
+            StaticJsonDocument<32> doc;
+            if (deserializeJson(doc, data, len)) {
+                req->send(400, "application/json", "{\"error\":\"bad json\"}");
+                return;
+            }
+            uint8_t spd = doc["speed"] | 1;
+            if (spd != 1 && spd != 2 && spd != 5) spd = 1;
+            traffic.simSpeed = spd;
+            Serial.printf("[SIM] Speed set to x%d (%d ms/tick)\n", spd, 500 / spd);
+            String body = "{\"ok\":true,\"simSpeed\":";
+            body += spd;
+            body += "}";
             req->send(200, "application/json", body);
         }
     );

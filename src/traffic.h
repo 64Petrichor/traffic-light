@@ -81,6 +81,10 @@ struct TrafficState {
     uint32_t mlDuration   = 5000;                        // green phase duration chosen by last ML inference (ms)
     bool     supervisedLoaded = false;  // set true by mlInit() when supervised model loads
     bool     rlLoaded         = false;  // set true by mlInit() when RL model loads
+
+    // Simulation speed multiplier: 1 = ×1 (500 ms/tick), 2 = ×2 (250 ms/tick), 5 = ×5 (100 ms/tick)
+    // Scales both queue tick rate and all phase durations proportionally.
+    uint8_t  simSpeed = 1;
 };
 
 // The single global traffic state instance, defined in traffic.cpp.

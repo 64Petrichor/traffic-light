@@ -69,7 +69,8 @@ function onStateUpdate(s) {
 
     document.getElementById('ui-phase').textContent =
         (s.phase || '--').replace('_', ' ').toUpperCase();
-    document.getElementById('ui-timer').textContent = Math.ceil(s.remaining / 1000) + 's';
+    const displayMs = (s.remaining || 0) * (s.simSpeed || 1);
+    document.getElementById('ui-timer').textContent = Math.ceil(displayMs / 1000) + 's';
 
     const mode  = s.mode || 'normal';
     const badge = document.getElementById('ui-mode-badge');
@@ -88,6 +89,11 @@ function onStateUpdate(s) {
         statusEl.textContent = msgs.join(' | ');
         statusEl.style.display = msgs.length ? 'block' : 'none';
     }
+
+    [1, 2, 5].forEach(spd => {
+        const btn = document.getElementById('spd-' + spd);
+        if (btn) btn.classList.toggle('active', s.simSpeed === spd);
+    });
 
     const brt      = s.brightness ?? 0;
     const barColor = brt < 30 ? '#ff7b00' : brt < 60 ? '#ffd000' : '#00ff66';
@@ -141,6 +147,29 @@ async function clearOverride() {
 async function toggleDim() {
     await fetch('/api/dim', {method: 'POST'});
 }
+
+async function setSpeed(speed) {
+    await fetch('/api/speed', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({speed}),
+    });
+}
+
+// ── Screen Wake Lock ──────────────────────────────────────────────────────────
+
+let wakeLock = null;
+
+async function acquireWakeLock() {
+    if (!('wakeLock' in navigator)) return;
+    try { wakeLock = await navigator.wakeLock.request('screen'); } catch (_) {}
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') acquireWakeLock();
+});
+
+acquireWakeLock();
 
 // ── Polling loop ──────────────────────────────────────────────────────────────
 
