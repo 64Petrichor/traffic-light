@@ -132,9 +132,7 @@ void trafficUpdate() {
         if (traffic.mlMode != TrafficState::ML_NORMAL && isYellow(traffic.phase)) {
             int road;
             uint32_t dur;
-            bool ok = (traffic.mlMode == TrafficState::ML_RL)
-                      ? mlRLInfer(&road, &dur)
-                      : mlInfer(&road, &dur);
+            bool ok = mlInfer(&road, &dur);
             if (ok) {
                 next = roadToGreen(road);
                 traffic.mlDuration = dur;
@@ -196,8 +194,7 @@ const char* modeName() {
     if (traffic.emergency)        return "emergency";
     if (traffic.overrideDir >= 0) return "override";
     if (traffic.mlMode == TrafficState::ML_GREEDY) return "greedy";
-    if (traffic.mlMode == TrafficState::ML_RL)     return "rl";
-    return "normal";
+return "normal";
 }
 
 const char* ledColor(int dir) {

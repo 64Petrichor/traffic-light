@@ -74,13 +74,12 @@ struct TrafficState {
     int      ldrNightThreshold = 30;   // brightness level below which night mode activates
     bool     autoDimEnabled    = true;  // whether night mode (green duration doubling) is on
 
-    enum MLMode { ML_NORMAL, ML_GREEDY, ML_RL };
+    enum MLMode { ML_NORMAL, ML_GREEDY };
     MLMode   mlMode       = ML_NORMAL;
     float    queues[4]    = {0.0f, 0.0f, 0.0f, 0.0f};  // normalised queue per road [top,bottom,left,right]
     uint8_t  intensity[4] = {1, 1, 1, 1};               // arrival rate per road: 0=low 1=med 2=high
     uint32_t mlDuration   = 5000;                        // green phase duration chosen by last ML inference (ms)
     bool     supervisedLoaded = false;  // set true by mlInit() when supervised model loads
-    bool     rlLoaded         = false;  // set true by mlInit() when RL model loads
 
     // Simulation speed multiplier: 1 = ×1 (500 ms/tick), 2 = ×2 (250 ms/tick), 5 = ×5 (100 ms/tick)
     // Scales both queue tick rate and all phase durations proportionally.
@@ -115,5 +114,5 @@ const char* ledColor(int dir);
 // Returns 0 during override (indefinite hold) and counts down during emergency.
 uint32_t timeRemaining();
 
-// Returns the active control mode: "normal", "greedy", "rl", "override", or "emergency".
+// Returns the active control mode: "normal", "greedy", "override", or "emergency".
 const char* modeName();

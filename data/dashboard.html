@@ -20,10 +20,8 @@
         .mode-badge.normal     { color: #00ff66; border-color: #00ff66; background: #00ff6611; }
         .mode-badge.ml         { color: #00e1ff; border-color: #00e1ff; background: #00e1ff11; }
         .mode-badge.greedy     { color: #00e1ff; border-color: #00e1ff; background: #00e1ff11; }
-        .mode-badge.rl         { color: #bf7fff; border-color: #bf7fff; background: #bf7fff11; }
         .mode-badge.override   { color: #ffd000; border-color: #ffd000; background: #ffd00011; }
         .mode-badge.emergency  { color: #ff4444; border-color: #ff4444; background: #ff444411; }
-        .mode-badge.simulation { color: #bf7fff; border-color: #bf7fff; background: #bf7fff11; }
 
         /* Queue % label — absolutely positioned just below each road box */
         .queue-label {
@@ -113,14 +111,10 @@
                     <span class="mode-tab-label">Greedy ML</span>
                     <span class="mode-stat" id="stat-greedy">--</span>
                 </button>
-                <button class="mode-tab" id="tab-rl" onclick="setMode('rl')">
-                    <span class="mode-tab-label">RL</span>
-                    <span class="mode-stat" id="stat-rl">--</span>
-                </button>
             </div>
             <div id="model-status" style="display:none;margin-top:8px;padding:6px 8px;background:#ff444411;border:1px solid #ff444444;border-radius:6px;font-size:0.72rem;color:#ff7b7b;"></div>
             <small style="color:#555;line-height:1.6;display:block;margin-top:10px">
-                TFLite models trained on simulated traffic. Avg % updates live while each mode is active.
+                Model trained on simulated traffic. Avg % updates live while each mode is active.
             </small>
         </div>
 

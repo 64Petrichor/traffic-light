@@ -5,7 +5,6 @@ let state = null;
 const modeStats = {
     normal: { sum: 0, count: 0 },
     greedy: { sum: 0, count: 0 },
-    rl:     { sum: 0, count: 0 },
 };
 
 // ── Rendering helpers ─────────────────────────────────────────────────────────
@@ -59,8 +58,8 @@ function onStateUpdate(s) {
         modeStats[mlMode].sum   += avgPct;
         modeStats[mlMode].count += 1;
     }
-    // Update mode-stat labels for all three tabs
-    ['normal', 'greedy', 'rl'].forEach(m => {
+    // Update mode-stat labels
+    ['normal', 'greedy'].forEach(m => {
         const el = document.getElementById('stat-' + m);
         if (!el) return;
         const st = modeStats[m];
@@ -76,18 +75,16 @@ function onStateUpdate(s) {
     const badge = document.getElementById('ui-mode-badge');
     if (badge) { badge.textContent = mode.toUpperCase(); badge.className = 'mode-badge ' + mode; }
 
-    ['normal', 'greedy', 'rl'].forEach(m => {
+    ['normal', 'greedy'].forEach(m => {
         const tab = document.getElementById('tab-' + m);
         if (tab) tab.classList.toggle('active', mlMode === m);
     });
 
     const statusEl = document.getElementById('model-status');
     if (statusEl) {
-        const msgs = [];
-        if (s.supervisedLoaded === false) msgs.push('Supervised model not loaded');
-        if (s.rlLoaded === false) msgs.push('RL model not loaded — run: pio run -t uploadfs');
-        statusEl.textContent = msgs.join(' | ');
-        statusEl.style.display = msgs.length ? 'block' : 'none';
+        const show = s.supervisedLoaded === false;
+        statusEl.textContent = show ? 'Supervised model not loaded — run: pio run -t uploadfs' : '';
+        statusEl.style.display = show ? 'block' : 'none';
     }
 
     [1, 2, 5].forEach(spd => {

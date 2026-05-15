@@ -62,9 +62,7 @@ void webserverInit() {
         doc["phase"]     = phaseName();
         doc["mode"]      = modeName();
         doc["emergency"] = traffic.emergency;
-        const char* mlModeStr = "normal";
-        if (traffic.mlMode == TrafficState::ML_GREEDY) mlModeStr = "greedy";
-        else if (traffic.mlMode == TrafficState::ML_RL) mlModeStr = "rl";
+        const char* mlModeStr = (traffic.mlMode == TrafficState::ML_GREEDY) ? "greedy" : "normal";
         doc["mlMode"] = mlModeStr;
 
         if (traffic.overrideDir >= 0)
@@ -103,7 +101,6 @@ void webserverInit() {
         doc["autoDim"]    = traffic.autoDimEnabled;
         doc["nightMode"]  = traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold;
         doc["supervisedLoaded"] = traffic.supervisedLoaded;
-        doc["rlLoaded"]         = traffic.rlLoaded;
         doc["simSpeed"]         = traffic.simSpeed;
 
         String body;
@@ -153,7 +150,7 @@ void webserverInit() {
                                          : "{\"ok\":true,\"autoDim\":false}");
     });
 
-    // POST /api/ml  { "mode": "normal"|"greedy"|"rl" }
+    // POST /api/ml  { "mode": "normal"|"greedy" }
     server.on("/api/ml", HTTP_POST,
         [](AsyncWebServerRequest* req) {},
         nullptr,
@@ -164,9 +161,8 @@ void webserverInit() {
                 return;
             }
             const char* mode = doc["mode"] | "normal";
-            if (strcmp(mode, "greedy") == 0)      traffic.mlMode = TrafficState::ML_GREEDY;
-            else if (strcmp(mode, "rl") == 0)     traffic.mlMode = TrafficState::ML_RL;
-            else                                   traffic.mlMode = TrafficState::ML_NORMAL;
+            if (strcmp(mode, "greedy") == 0) traffic.mlMode = TrafficState::ML_GREEDY;
+            else                             traffic.mlMode = TrafficState::ML_NORMAL;
             Serial.printf("[ML] Mode set to %s\n", mode);
             String body = "{\"ok\":true,\"mlMode\":\"";
             body += mode;

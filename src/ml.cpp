@@ -28,8 +28,7 @@ static void softmax(float* v, int n) {
 
 bool mlInit() {
     traffic.supervisedLoaded = true;
-    traffic.rlLoaded         = true;
-    Serial.println("[ML] Weights compiled-in — supervised + RL ready");
+    Serial.println("[ML] Weights compiled-in — supervised ready");
     return true;
 }
 
@@ -87,29 +86,3 @@ bool mlInfer(int* road, uint32_t* durationMs) {
     return true;
 }
 
-bool mlRLInfer(int* road, uint32_t* durationMs) {
-    float inp[8], h1[32], h2[16], road_out[4], dur_out[1];
-
-    for (int i = 0; i < 4; i++) {
-        inp[i]   = traffic.queues[i];
-        inp[i+4] = ML_INTENSITY_MUL[traffic.intensity[i]];
-    }
-
-    matmul_bias(RL_L1_W,   RL_L1_B,   inp, h1, 8,  32); relu(h1, 32);
-    matmul_bias(RL_L2_W,   RL_L2_B,   h1,  h2, 32, 16); relu(h2, 16);
-    matmul_bias(RL_ROAD_W, RL_ROAD_B, h2, road_out, 16, 4); softmax(road_out, 4);
-    matmul_bias(RL_DUR_W,  RL_DUR_B,  h2, dur_out,  16, 1);
-
-    int best = 0;
-    for (int i = 1; i < 4; i++) if (road_out[i] > road_out[best]) best = i;
-    *road = best;
-
-    float dur = fmaxf(ML_MIN_GREEN_S, fminf(ML_MAX_GREEN_S, dur_out[0]));
-    *durationMs = (uint32_t)(dur * 1000.0f);  // simSpeed scaling applied in phaseDuration()
-
-    Serial.printf("[RL] road=%d dur=%.1fs q=[%.2f %.2f %.2f %.2f]\n",
-                  best, dur,
-                  traffic.queues[0], traffic.queues[1],
-                  traffic.queues[2], traffic.queues[3]);
-    return true;
-}
