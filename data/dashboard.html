@@ -19,6 +19,8 @@
         }
         .mode-badge.normal     { color: #00ff66; border-color: #00ff66; background: #00ff6611; }
         .mode-badge.ml         { color: #00e1ff; border-color: #00e1ff; background: #00e1ff11; }
+        .mode-badge.greedy     { color: #00e1ff; border-color: #00e1ff; background: #00e1ff11; }
+        .mode-badge.rl         { color: #bf7fff; border-color: #bf7fff; background: #bf7fff11; }
         .mode-badge.override   { color: #ffd000; border-color: #ffd000; background: #ffd00011; }
         .mode-badge.emergency  { color: #ff4444; border-color: #ff4444; background: #ff444411; }
         .mode-badge.simulation { color: #bf7fff; border-color: #bf7fff; background: #bf7fff11; }
@@ -51,7 +53,7 @@
             border: 1px solid #444; background: #1a1a2e; color: #666;
             cursor: pointer; border-radius: 3px; transition: all 0.15s;
         }
-        .int-btn.active { background: #00e1ff22; color: #00e1ff; border-color: #00e1ff; }
+        .int-btn.active { background: #00e1ff0d; color: #00e1ff88; border-color: #00e1ff44; }
         .queue-wrap { flex: 1; height: 10px; background: #0d0d1a; border-radius: 5px; overflow: hidden; border: 1px solid #2a2a3e; }
         .queue-bar  { height: 100%; width: 0%; border-radius: 5px; transition: width 0.4s, background 0.4s; }
         .queue-pct  { width: 36px; font-size: 0.78rem; text-align: right; color: #888; flex-shrink: 0; }
@@ -74,26 +76,27 @@
             </div>
         </div>
 
-        <!-- ── ML Control ─────────────────────────────────────────────────── -->
+        <!-- ── Mode Control ───────────────────────────────────────────────── -->
         <div class="panel">
-            <div class="panel-title">ML Control</div>
-            <button id="btn-ml" onclick="toggleML()" style="margin-bottom:10px">Enable ML Mode</button>
-            <small style="color:#555;line-height:1.6;display:block">
-                TFLite model trained on a simulated traffic light scenarios based on live queue depth.
-            </small>
-        </div>
-
-        <!-- ── Brightness ─────────────────────────────────────────────────── -->
-        <div class="ldr-card">
-            <h2>&#x1F506; Brightness <span id="night-badge" class="dim-badge" style="display:none">NIGHT MODE</span></h2>
-            <div class="ldr-row">
-                <div class="ldr-value" id="ldr-value">--%</div>
-                <div class="ldr-bar-wrap">
-                    <div class="ldr-bar" id="ldr-bar" style="width:0%;background:#00ff66"></div>
-                </div>
+            <div class="panel-title">Mode Control</div>
+            <div class="mode-tabs">
+                <button class="mode-tab active" id="tab-normal" onclick="setMode('normal')">
+                    <span class="mode-tab-label">Normal</span>
+                    <span class="mode-stat" id="stat-normal">--</span>
+                </button>
+                <button class="mode-tab" id="tab-greedy" onclick="setMode('greedy')">
+                    <span class="mode-tab-label">Greedy ML</span>
+                    <span class="mode-stat" id="stat-greedy">--</span>
+                </button>
+                <button class="mode-tab" id="tab-rl" onclick="setMode('rl')">
+                    <span class="mode-tab-label">RL</span>
+                    <span class="mode-stat" id="stat-rl">--</span>
+                </button>
             </div>
-            <div class="ldr-label">GPIO 34 | Threshold: <b id="ldr-threshold">--%</b> | Auto-dim: <b id="autodim-state">--</b></div>
-            <button class="btn-dim" onclick="toggleDim()" id="dim-btn">-- Auto-Dim</button>
+            <div id="model-status" style="display:none;margin-top:8px;padding:6px 8px;background:#ff444411;border:1px solid #ff444444;border-radius:6px;font-size:0.72rem;color:#ff7b7b;"></div>
+            <small style="color:#555;line-height:1.6;display:block;margin-top:10px">
+                TFLite models trained on simulated traffic. Avg % updates live while each mode is active.
+            </small>
         </div>
 
         <!-- ── Intersection (queue % overlaid on each road) ───────────────── -->
@@ -122,11 +125,14 @@
         <!-- ── Manual Override ────────────────────────────────────────────── -->
         <div class="panel">
             <div class="panel-title">Manual Green Override</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <button onclick="override('top')">TOP</button>
-                <button onclick="override('bottom')">BOTTOM</button>
-                <button onclick="override('left')">LEFT</button>
-                <button onclick="override('right')">RIGHT</button>
+            <div class="override-cross">
+                <button class="ovr-btn ovr-top" onclick="override('top')">TOP</button>
+                <div class="override-mid-row">
+                    <button class="ovr-btn ovr-left" onclick="override('left')">LEFT</button>
+                    <div class="ovr-center"></div>
+                    <button class="ovr-btn ovr-right" onclick="override('right')">RIGHT</button>
+                </div>
+                <button class="ovr-btn ovr-bottom" onclick="override('bottom')">BOTTOM</button>
             </div>
             <button class="btn-clear" onclick="clearOverride()">RESTORE AUTO CYCLE</button>
         </div>
@@ -182,6 +188,19 @@
             <small style="color:#555;display:block;margin-top:6px">
                 Queue = normalised vehicle count (0–100%). Updates every 500 ms.
             </small>
+        </div>
+
+        <!-- ── Brightness ─────────────────────────────────────────────────── -->
+        <div class="ldr-card">
+            <h2>&#x1F506; Brightness <span id="night-badge" class="dim-badge" style="display:none">NIGHT MODE</span></h2>
+            <div class="ldr-row">
+                <div class="ldr-value" id="ldr-value">--%</div>
+                <div class="ldr-bar-wrap">
+                    <div class="ldr-bar" id="ldr-bar" style="width:0%;background:#00ff66"></div>
+                </div>
+            </div>
+            <div class="ldr-label">GPIO 34 | Threshold: <b id="ldr-threshold">--%</b> | Auto-dim: <b id="autodim-state">--</b></div>
+            <button class="btn-dim" onclick="toggleDim()" id="dim-btn">-- Auto-Dim</button>
         </div>
 
     </div>

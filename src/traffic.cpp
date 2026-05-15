@@ -48,7 +48,7 @@ static void applyPhase(Phase p) {
 
 static uint32_t phaseDuration(Phase p) {
     // In ML mode the model decides green duration; yellow is always the configured value
-    if (traffic.mlMode) {
+    if (traffic.mlMode != TrafficState::ML_NORMAL) {
         switch (p) {
             case TOP_GREEN:
             case BOTTOM_GREEN:
@@ -129,10 +129,13 @@ void trafficUpdate() {
 
     if (now - traffic.phaseStart >= phaseDuration(traffic.phase)) {
         Phase next;
-        if (traffic.mlMode && isYellow(traffic.phase)) {
+        if (traffic.mlMode != TrafficState::ML_NORMAL && isYellow(traffic.phase)) {
             int road;
             uint32_t dur;
-            if (mlInfer(&road, &dur)) {
+            bool ok = (traffic.mlMode == TrafficState::ML_RL)
+                      ? mlRLInfer(&road, &dur)
+                      : mlInfer(&road, &dur);
+            if (ok) {
                 next = roadToGreen(road);
                 traffic.mlDuration = dur;
             } else {
@@ -192,7 +195,8 @@ const char* phaseName() {
 const char* modeName() {
     if (traffic.emergency)        return "emergency";
     if (traffic.overrideDir >= 0) return "override";
-    if (traffic.mlMode)           return "ml";
+    if (traffic.mlMode == TrafficState::ML_GREEDY) return "greedy";
+    if (traffic.mlMode == TrafficState::ML_RL)     return "rl";
     return "normal";
 }
 

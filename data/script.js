@@ -2,6 +2,11 @@ const ROADS     = ['top', 'bottom', 'left', 'right'];
 const INT_LEVEL = {'low': 0, 'med': 1, 'high': 2};
 
 let state = null;
+const modeStats = {
+    normal: { sum: 0, count: 0 },
+    greedy: { sum: 0, count: 0 },
+    rl:     { sum: 0, count: 0 },
+};
 
 // ── Rendering helpers ─────────────────────────────────────────────────────────
 
@@ -47,6 +52,21 @@ function onStateUpdate(s) {
     const intensity = s.intensity ? ROADS.map(r => INT_LEVEL[s.intensity[r]] ?? 1) : [1,1,1,1];
     renderQueues(queues, intensity);
 
+    // Accumulate avg queue % for the active mode
+    const mlMode = s.mlMode || 'normal';
+    if (modeStats[mlMode]) {
+        const avgPct = Math.round((queues[0] + queues[1] + queues[2] + queues[3]) / 4 * 100);
+        modeStats[mlMode].sum   += avgPct;
+        modeStats[mlMode].count += 1;
+    }
+    // Update mode-stat labels for all three tabs
+    ['normal', 'greedy', 'rl'].forEach(m => {
+        const el = document.getElementById('stat-' + m);
+        if (!el) return;
+        const st = modeStats[m];
+        el.textContent = st.count > 0 ? 'avg ' + Math.round(st.sum / st.count) + '% waiting' : '--';
+    });
+
     document.getElementById('ui-phase').textContent =
         (s.phase || '--').replace('_', ' ').toUpperCase();
     document.getElementById('ui-timer').textContent = Math.ceil(s.remaining / 1000) + 's';
@@ -55,12 +75,18 @@ function onStateUpdate(s) {
     const badge = document.getElementById('ui-mode-badge');
     if (badge) { badge.textContent = mode.toUpperCase(); badge.className = 'mode-badge ' + mode; }
 
-    const btnMl = document.getElementById('btn-ml');
-    if (btnMl) {
-        btnMl.textContent      = s.mlMode ? 'Disable ML Mode' : 'Enable ML Mode';
-        btnMl.style.background = s.mlMode ? 'linear-gradient(135deg,#003a4a,#00e1ff)' : '';
-        btnMl.style.color      = s.mlMode ? '#fff' : '';
-        btnMl.style.border     = s.mlMode ? 'none' : '';
+    ['normal', 'greedy', 'rl'].forEach(m => {
+        const tab = document.getElementById('tab-' + m);
+        if (tab) tab.classList.toggle('active', mlMode === m);
+    });
+
+    const statusEl = document.getElementById('model-status');
+    if (statusEl) {
+        const msgs = [];
+        if (s.supervisedLoaded === false) msgs.push('Supervised model not loaded');
+        if (s.rlLoaded === false) msgs.push('RL model not loaded — run: pio run -t uploadfs');
+        statusEl.textContent = msgs.join(' | ');
+        statusEl.style.display = msgs.length ? 'block' : 'none';
     }
 
     const brt      = s.brightness ?? 0;
@@ -80,12 +106,11 @@ function onStateUpdate(s) {
 
 // ── Control actions ───────────────────────────────────────────────────────────
 
-async function toggleML() {
-    const enabled = !(state && state.mlMode);
+async function setMode(mode) {
     await fetch('/api/ml', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({enabled}),
+        body: JSON.stringify({mode}),
     });
 }
 
