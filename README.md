@@ -12,7 +12,7 @@ The ESP32 runs one infinite loop. Every iteration it does three things:
 
 1. Check if an RFID card is present
 2. Check the ambient light sensor
-3. Advance the traffic light (which also updates ML queue simulation internally)
+3. Advance the traffic light (which also updates queue simulation internally)
 
 That's it. No operating system, no threads, no scheduler — just a tight loop running hundreds of times per second.
 
@@ -71,21 +71,35 @@ The LDR brightness (0–100%) is printed to Serial every second for monitoring.
 
 ---
 
-### Interruption 3 — ML mode
+### Interruption 3 — Adaptive mode
 
 The dashboard's Mode Control panel lets you switch between two modes at runtime:
 
 - **Normal** — fixed round-robin cycle (Top → Bottom → Left → Right), each road using its configured green duration. Baseline: ~30% avg cars waiting.
-- **Greedy ML** — supervised TFLite model (`traffic_model.tflite`, ~4.7 KB) trained to imitate a greedy heuristic. Selects the road with the highest queue × intensity score and sets a proportional green duration. ~24% avg cars waiting on imbalanced traffic.
+- **Adaptive** — greedy heuristic implemented directly in firmware. Selects the road with the highest `queue × intensity` score and sets a proportional green duration (5–15 seconds). ~24% avg cars waiting on imbalanced traffic. No model file required.
 
-The ML model loads at boot from LittleFS. It receives 8 inputs per inference (4 queue depths + 4 arrival intensities) and returns which road to make green next and how long the green phase should last (5–15 seconds).
+The greedy formula runs at the end of every yellow phase:
+```
+scores[i]  = queues[i] × intensity_multiplier[i]   → pick argmax
+duration   = MIN_GREEN + queues[best] × (MAX_GREEN − MIN_GREEN)   → clamped to [5, 15] s
+```
 
 **Queue simulation** runs every 500 ms regardless of mode:
 - The currently-green road drains at a fixed rate
 - All red roads accumulate based on their configured arrival intensity (low / med / high)
 - Queue values stay in [0, 1]
 
-Inference fires at the end of every yellow phase. Switching modes takes effect at the next yellow phase with no cycle reset. The `mode` field in the API reports `"normal"`, `"greedy"`, `"override"`, or `"emergency"`.
+Switching modes takes effect at the next yellow phase with no cycle reset. The `mode` field in the API reports `"normal"`, `"greedy"`, `"override"`, or `"emergency"`.
+
+**Why not a trained model?**
+
+Two ML approaches were prototyped before settling on the direct formula:
+
+1. **Supervised neural network (8→16→8, TFLite)** — trained to imitate the greedy formula. Achieved perfect accuracy on training data, but this just proved it had learned to replicate two lines of arithmetic. Deploying a 4.7 KB neural net to reproduce `argmax(queue × intensity)` added complexity with no behavioural difference. Replaced by the formula itself.
+
+2. **Reinforcement learning (PPO, 8→32→16)** — trained with a delta-queue reward signal across three curriculum stages. The agent learned a degenerate policy: it found it could maximise cumulative reward by permanently starving one low-intensity road (which accumulates slowly and barely hurts the reward), rather than managing all four roads fairly. Fixing this requires more elaborate reward shaping (fairness penalties, starvation timeouts) which would have introduced as much arbitrary tuning as the heuristic it was meant to replace.
+
+The greedy formula is simpler, fully deterministic, and performs within the same range as both models on the benchmarks that matter.
 
 ---
 
@@ -101,7 +115,7 @@ The dashboard polls the ESP32 every **100 ms** for live state and lets you:
 - Release an override and return to normal cycle
 - Change how long each road stays green or yellow
 - See ambient brightness and toggle night mode
-- Switch between Normal and Greedy ML modes and set per-road arrival intensity
+- Switch between Normal and Adaptive modes and set per-road arrival intensity
 
 ---
 
@@ -124,7 +138,7 @@ The solution: a **74HC595N shift register** handles all 8 red and yellow LEDs us
 | Emergency red LED | Indicates active emergency state |
 | LDR | Ambient light sensor for night mode |
 
-The ML model (`traffic_model.tflite`) is stored in the ESP32 flash filesystem alongside the dashboard files. No additional hardware is required for ML mode.
+The adaptive heuristic runs directly in firmware — no model file or additional hardware is required.
 
 Full pin mapping: [`traffic light pins.md`](traffic%20light%20pins.md)
 
@@ -137,15 +151,11 @@ src/
   main.cpp          — entry point; setup, loop, RFID polling, LDR sampling
   traffic.h/.cpp    — traffic state machine and LED output driver
   webserver.h/.cpp  — WiFi access point, async HTTP server, REST API
-  ml.h/.cpp         — TFLite inference and queue simulation
+  ml.h/.cpp         — queue simulation and adaptive greedy heuristic
 data/
-  dashboard.html         — web dashboard served from ESP32 flash filesystem
-  style.css              — dashboard styles
-  script.js              — dashboard polling loop and API helpers
-  traffic_model.tflite   — supervised (Greedy ML) TFLite model loaded at boot
-ml/
-  traffic_light.ipynb     — Jupyter notebook: simulation, training, export
-  traffic_model.tflite    — supervised model source; copied to data/ for upload
+  dashboard.html    — web dashboard served from ESP32 flash filesystem
+  style.css         — dashboard styles
+  script.js         — dashboard polling loop and API helpers
 API.md              — REST API reference
 traffic light pins.md — full hardware wiring reference
 ```
@@ -160,13 +170,11 @@ traffic light pins.md — full hardware wiring reference
 
 ### First-time setup
 
-### First-time setup
-
 ```bash
 # Flash firmware to ESP32
 pio run -t upload
 
-# Upload dashboard + TFLite models to ESP32 filesystem
+# Upload dashboard files to ESP32 filesystem
 pio run -t uploadfs
 ```
 
@@ -228,7 +236,8 @@ The `state` object available in `onStateUpdate` has this shape:
     brightness: 75,     // LDR ambient brightness 0–100
     threshold:  75,     // night threshold set at boot
     autoDim:    true,   // whether auto-dim is enabled
-    nightMode:  false   // true when autoDim && brightness < threshold
+    nightMode:  false,  // true when autoDim && brightness < threshold
+    simSpeed:   1       // simulation speed multiplier: 1, 2, or 5
 }
 ```
 

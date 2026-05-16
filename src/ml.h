@@ -15,9 +15,6 @@
 // Intensity multipliers indexed by traffic.intensity[i]: 0=low, 1=med, 2=high
 extern const float ML_INTENSITY_MUL[3];
 
-// Initialises the compiled-in supervised model. Call once from setup().
-bool mlInit();
-
 // Updates all four queue floats on a 500 ms timer. Always call from trafficUpdate()
 // regardless of mode — keeps queues live even during override/emergency.
 void mlQueueTick(uint32_t now);

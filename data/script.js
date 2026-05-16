@@ -80,13 +80,6 @@ function onStateUpdate(s) {
         if (tab) tab.classList.toggle('active', mlMode === m);
     });
 
-    const statusEl = document.getElementById('model-status');
-    if (statusEl) {
-        const show = s.supervisedLoaded === false;
-        statusEl.textContent = show ? 'Supervised model not loaded — run: pio run -t uploadfs' : '';
-        statusEl.style.display = show ? 'block' : 'none';
-    }
-
     [1, 2, 5].forEach(spd => {
         const btn = document.getElementById('spd-' + spd);
         if (btn) btn.classList.toggle('active', s.simSpeed === spd);

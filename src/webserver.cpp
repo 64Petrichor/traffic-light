@@ -100,8 +100,7 @@ void webserverInit() {
         doc["threshold"]  = traffic.ldrNightThreshold;
         doc["autoDim"]    = traffic.autoDimEnabled;
         doc["nightMode"]  = traffic.autoDimEnabled && traffic.ldrBrightness < traffic.ldrNightThreshold;
-        doc["supervisedLoaded"] = traffic.supervisedLoaded;
-        doc["simSpeed"]         = traffic.simSpeed;
+        doc["simSpeed"]   = traffic.simSpeed;
 
         String body;
         serializeJson(doc, body);

@@ -1,15 +1,15 @@
 # src/ — ESP32 Adaptive Traffic Light Firmware
 
-Source code for an adaptive traffic light controller running on ESP32. The firmware manages a four-road intersection with hardware LED control, RFID-triggered emergency mode, ambient light sensing, a browser-based dashboard, and on-device TFLite inference for traffic optimization.
+Source code for an adaptive traffic light controller running on ESP32. The firmware manages a four-road intersection with hardware LED control, RFID-triggered emergency mode, ambient light sensing, a browser-based dashboard, and adaptive greedy scheduling for traffic optimization.
 
 ## Files
 
 | File | Role |
 |---|---|
-| `main.cpp` | Entry point: SPI init, RFID polling, LDR sampling, WiFi/server setup, calls `mlInit()`, main loop |
+| `main.cpp` | Entry point: SPI init, RFID polling, LDR sampling, WiFi/server setup, main loop |
 | `traffic.h` / `traffic.cpp` | Traffic light state machine, LED control, phase logic |
 | `webserver.h` / `webserver.cpp` | WiFi AP creation, LittleFS mount, async REST API server |
-| `ml.h` / `ml.cpp` | TFLite inference for supervised greedy model, queue simulation |
+| `ml.h` / `ml.cpp` | Greedy adaptive scheduling and queue simulation |
 
 ## Architecture
 
@@ -29,7 +29,7 @@ LEFT_GREEN -> LEFT_YELLOW -> RIGHT_GREEN -> RIGHT_YELLOW -> repeat
 ### Special Phases
 
 - **OVERRIDE** — one road held green indefinitely until cleared via the web API
-- **EMERGENCY** — all roads red for 5 seconds, triggered by RFID card scan; 15-second cooldown between triggers
+- **EMERGENCY** — all roads red for `5000 / simSpeed` ms, triggered by RFID card scan; 15-second cooldown between triggers
 
 ### Key `TrafficState` Fields
 
@@ -40,13 +40,14 @@ LEFT_GREEN -> LEFT_YELLOW -> RIGHT_GREEN -> RIGHT_YELLOW -> repeat
 | `overrideDir` | `int` | -1 = none, 0-3 = direction index |
 | `timings` | struct | Configurable green/yellow durations (ms) |
 | `phaseStart` | `unsigned long` | `millis()` timestamp of phase start |
-| `ldrBrightness` | `int` | Raw ADC reading from LDR on GPIO 34 |
+| `ldrBrightness` | `int` | Ambient brightness 0–100% (mapped from ADC) |
 | `ldrNightThreshold` | `int` | Calibrated at boot |
 | `autoDimEnabled` | `bool` | Whether night mode scaling is active |
 | `mlMode` | `MLMode` | `ML_NORMAL` or `ML_GREEDY` |
 | `queues[4]` | `float` | Normalized queue depth per road [0.0, 1.0] |
 | `intensity[4]` | `int` | Arrival rate per road: 0=low, 1=med, 2=high |
-| `mlDuration` | `int` | Green phase duration from last ML inference (ms) |
+| `mlDuration` | `int` | Green phase duration from last greedy decision (ms) |
+| `simSpeed` | `uint8_t` | Simulation speed multiplier: 1=×1, 2=×2, 5=×5 — scales tick rate and phase durations |
 
 ### LED Control
 
@@ -58,28 +59,22 @@ LEFT_GREEN -> LEFT_YELLOW -> RIGHT_GREEN -> RIGHT_YELLOW -> repeat
 
 When `ldrBrightness < ldrNightThreshold` and `autoDimEnabled` is true, green phase durations are scaled by 2.0x to account for reduced traffic volume at night.
 
-## ML Inference
+## Adaptive Scheduling
 
-Defined in `ml.h` / `ml.cpp`. One TFLite model is loaded from LittleFS at boot via `mlInit()`.
+Defined in `ml.h` / `ml.cpp`. After every yellow phase when `mlMode == ML_GREEDY`, `mlInfer()` runs the greedy heuristic directly in firmware — no model file required.
 
-### Models
+**Input:** current queue depths and intensity multipliers per road (8 values total)
 
-| File | Type | Size | Fallback |
-|---|---|---|---|
-| `traffic_model.tflite` | Supervised / greedy | ~4.7 KB | Required — `mlInit()` returns false if missing |
+**Algorithm:**
+- Score each road: `score = queue × intensity_multiplier`
+- Pick the road with the highest score
+- Duration: `5 + queue[best] × (15 − 5)` seconds, clamped to [5, 15]
 
-### Input / Output
-
-The model uses the following interface:
-
-- **Input:** 8 floats — `[q_top, q_bottom, q_left, q_right, i_top, i_bottom, i_left, i_right]`
-- **Output:** road index (argmax of softmax) + green duration in seconds, clamped to [5, 15]
-
-Inference fires at every yellow-to-green transition when `mlMode` is not `ML_NORMAL`.
+**Output:** which road goes green next + green duration in seconds
 
 ### Queue Simulation (`mlQueueTick()`)
 
-Runs every 500 ms regardless of active mode, updating the `queues[4]` values:
+Runs every `500 / simSpeed` ms, updating the `queues[4]` values:
 
 - Green road: queue decreases by 0.03 per tick
 - Red roads: queue increases by `0.015 * intensity_multiplier` per tick
@@ -107,6 +102,7 @@ Defined in `webserver.h` / `webserver.cpp`. Creates a WiFi access point and serv
 | `/api/dim` | POST | — | Toggle auto-dim night mode |
 | `/api/ml` | POST | `{"mode":"normal"\|"greedy"}` | Switch inference mode |
 | `/api/intensity` | POST | `{"road":"top","level":"high"}` | Set per-road arrival rate |
+| `/api/speed` | POST | `{"speed":1}` | Set simulation speed multiplier (1, 2, or 5) |
 
 ### `/api/status` Response Fields
 
@@ -115,14 +111,14 @@ Defined in `webserver.h` / `webserver.cpp`. Creates a WiFi access point and serv
 ## Build
 
 - **Framework:** PlatformIO / Arduino for ESP32
-- **Partition scheme:** `huge_app.csv` — 3 MB app partition, 960 KB LittleFS for TFLite models and dashboard assets
+- **Partition scheme:** `huge_app.csv` — 3 MB app partition, 960 KB LittleFS for dashboard assets
 
 ```bash
 # Flash firmware
 pio run -t upload
 
-# Flash filesystem (dashboard HTML + TFLite models)
+# Flash filesystem (dashboard HTML/CSS/JS)
 pio run -t uploadfs
 ```
 
-Both steps are required on first deployment. The firmware will fail to initialize ML inference if the models are not present on LittleFS.
+Both steps are required on first deployment.

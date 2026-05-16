@@ -49,16 +49,17 @@ Returns the current system state. Poll this every 100ms.
   "brightness": 75,
   "threshold": 75,
   "autoDim": true,
-  "nightMode": false
+  "nightMode": false,
+  "simSpeed": 1
 }
 ```
 
 | Field | Values |
 |---|---|
 | `phase` | `top_green`, `top_yellow`, `bottom_green`, `bottom_yellow`, `left_green`, `left_yellow`, `right_green`, `right_yellow`, `override`, `emergency` |
-| `mode` | `"normal"`, `"greedy"`, `"rl"`, `"override"`, or `"emergency"` — active control mode |
+| `mode` | `"normal"`, `"greedy"`, `"override"`, or `"emergency"` — active control mode |
 | `emergency` | `true` while RFID emergency is active (auto-clears after 5s) |
-| `mlMode` | Active ML mode: `"normal"` (round-robin), `"greedy"` (supervised model), or `"rl"` (PPO model) |
+| `mlMode` | Active scheduling mode: `"normal"` (round-robin) or `"greedy"` (adaptive heuristic) |
 | `override` | `"top"`, `"bottom"`, `"left"`, `"right"`, or `null` |
 | `leds.X` | `"green"`, `"yellow"`, or `"red"` |
 | `timings` | Green phase durations in ms per direction, yellow duration shared |
@@ -69,6 +70,7 @@ Returns the current system state. Poll this every 100ms.
 | `threshold` | Night threshold — calibrated from the first LDR reading at boot |
 | `autoDim` | `true` when auto-dim is enabled |
 | `nightMode` | `true` when autoDim is on and brightness is below the threshold |
+| `simSpeed` | Simulation speed multiplier: `1` (real-time), `2` (×2), or `5` (×5) |
 
 ---
 
@@ -114,7 +116,7 @@ Toggle auto-dim on or off. When auto-dim is active and brightness drops below th
 ---
 
 ### POST /api/ml
-Set the active control mode. When set to `greedy` or `rl`, the corresponding TFLite model selects which road goes green and for how long after each yellow phase, based on simulated queue depths and per-road arrival intensity. Takes effect at the next yellow-to-green transition.
+Set the active control mode. When set to `greedy`, the adaptive scheduling logic selects which road goes green and for how long after each yellow phase, based on simulated queue depths and per-road arrival intensity. Takes effect at the next yellow-to-green transition.
 
 **Body:**
 ```json
@@ -124,15 +126,14 @@ Set the active control mode. When set to `greedy` or `rl`, the corresponding TFL
 | `mode` | Effect |
 |---|---|
 | `"normal"` | Round-robin cycle using configured durations |
-| `"greedy"` | Supervised TFLite model selects road and duration |
-| `"rl"` | PPO TFLite model selects road and duration |
+| `"greedy"` | Adaptive heuristic selects road and duration |
 
 **Response:** `{ "ok": true, "mlMode": "greedy" }`
 
 ---
 
 ### POST /api/intensity
-Set the simulated arrival intensity for one road. This controls how fast that road's queue accumulates while it is red, which in turn influences the ML model's road selection.
+Set the simulated arrival intensity for one road. This controls how fast that road's queue accumulates while it is red, which in turn influences Adaptive mode's road selection.
 
 **Body:**
 ```json
@@ -143,6 +144,22 @@ Set the simulated arrival intensity for one road. This controls how fast that ro
 |---|---|
 | `road` | `"top"`, `"bottom"`, `"left"`, `"right"` |
 | `level` | `"low"`, `"med"`, `"high"` |
+
+**Response:** `{ "ok": true }`
+
+---
+
+### POST /api/speed
+Set the simulation speed multiplier. This scales the internal tick rate and phase durations so the cycle can be observed faster than real time.
+
+**Body:**
+```json
+{ "speed": 2 }
+```
+
+| Field | Values |
+|---|---|
+| `speed` | `1` (×1, 500 ms/tick), `2` (×2, 250 ms/tick), or `5` (×5, 100 ms/tick). Any other value is clamped to `1`. |
 
 **Response:** `{ "ok": true }`
 

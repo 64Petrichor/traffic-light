@@ -108,13 +108,12 @@
                     <span class="mode-stat" id="stat-normal">--</span>
                 </button>
                 <button class="mode-tab" id="tab-greedy" onclick="setMode('greedy')">
-                    <span class="mode-tab-label">Greedy ML</span>
+                    <span class="mode-tab-label">Adaptive</span>
                     <span class="mode-stat" id="stat-greedy">--</span>
                 </button>
             </div>
-            <div id="model-status" style="display:none;margin-top:8px;padding:6px 8px;background:#ff444411;border:1px solid #ff444444;border-radius:6px;font-size:0.72rem;color:#ff7b7b;"></div>
             <small style="color:#555;line-height:1.6;display:block;margin-top:10px">
-                Model trained on simulated traffic. Avg % updates live while each mode is active.
+                Adaptive mode serves the most congested road first. Avg % updates live while each mode is active.
             </small>
         </div>
 
@@ -150,7 +149,7 @@
                 <button class="speed-tab" id="spd-5" onclick="setSpeed(5)">10/s<br><small>100 ms</small></button>
             </div>
             <small style="color:#555;line-height:1.6;display:block;margin-top:8px">
-                Scales queue ticks and phase durations. Faster speeds let the ML modes warm up quicker.
+                Scales queue ticks and phase durations. Faster speeds let Adaptive mode warm up quicker.
             </small>
         </div>
 
