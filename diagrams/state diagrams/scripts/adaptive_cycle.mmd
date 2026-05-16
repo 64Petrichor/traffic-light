@@ -1,0 +1,14 @@
+stateDiagram-v2
+    direction TB
+
+    [*] --> mlInfer
+
+    mlInfer       --> GreenPhase  : select highest-queue road (5–15 s)
+    GreenPhase    --> YellowPhase : duration elapsed
+    YellowPhase   --> mlInfer     : 2 s elapsed
+
+    note right of mlInfer
+        Picks the road with the highest
+        queue value and sets green duration
+        proportionally (5–15 s range).
+    end note

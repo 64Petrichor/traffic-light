@@ -1,0 +1,19 @@
+---
+config:
+  layout: dagre
+---
+stateDiagram
+  direction TB
+  [*] --> TOP_GREEN
+  TOP_GREEN --> TOP_YELLOW:green timeout (default 5 s)
+  TOP_YELLOW --> BOTTOM_GREEN:2 s
+  BOTTOM_GREEN --> BOTTOM_YELLOW:green timeout (default 5 s)
+  BOTTOM_YELLOW --> LEFT_GREEN:2 s
+  LEFT_GREEN --> LEFT_YELLOW:green timeout (default 5 s)
+  LEFT_YELLOW --> RIGHT_GREEN:2 s
+  RIGHT_GREEN --> RIGHT_YELLOW:green timeout (default 5 s)
+  RIGHT_YELLOW --> TOP_GREEN:2 s
+  note right of TOP_GREEN 
+  Night mode (LDR below threshold)
+        doubles all green timeouts.
+  end note

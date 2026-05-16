@@ -1,0 +1,29 @@
+---
+config:
+  theme: redux
+  layout: elk
+---
+stateDiagram-v2
+    direction TB
+
+    [*] --> Cycle
+
+    state "Traffic Cycle (Normal or Adaptive)" as Cycle
+
+    Cycle     --> EMERGENCY : RFID scan / API trigger
+    EMERGENCY --> Cycle     : 5 s elapsed\n(15 s cooldown)
+
+    Cycle    --> OVERRIDE : API setOverride(dir)
+    OVERRIDE --> Cycle    : API clearOverride()
+
+    note right of EMERGENCY
+        All roads RED for 5 s.
+        15 s cooldown before
+        re-trigger is allowed.
+    end note
+
+    note left of OVERRIDE
+        Selected direction stays
+        green indefinitely until
+        cleared.
+    end note
