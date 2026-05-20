@@ -75,7 +75,7 @@ static void checkRFID() {
 // Initialises SPI, the RFID reader, the traffic state machine, and the web server.
 // Calibrates the LDR night threshold to the ambient brightness at boot time.
 void setup() {
-    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // prevent boot-loop on external supply
+    WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);  // attempts to prevent boot-loop on external supply
     Serial.begin(115200);
     SPI.begin();
     rfid.PCD_Init();

@@ -11,7 +11,7 @@ enum LedColor { LED_RED, LED_YELLOW, LED_GREEN };
 // Sends one byte to the 74HC595 shift register.
 // Protocol: pull latch LOW → clock in 8 bits MSB-first → pull latch HIGH to latch outputs.
 // Each bit position maps to a red or yellow LED as defined in traffic.h (BIT_RED_*, BIT_YEL_*).
-static void shiftWrite(byte state) {
+static void shiftWrite(byte state) { 
     digitalWrite(LATCH_PIN, LOW);           // open the shift register for new data
     shiftOut(DATA_PIN, CLOCK_PIN, MSBFIRST, state); // push 8 bits, MSB first
     digitalWrite(LATCH_PIN, HIGH);          // latch: transfer shift register → output pins

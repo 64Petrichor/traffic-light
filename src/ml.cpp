@@ -49,9 +49,10 @@ void mlQueueTick(uint32_t now) {
 
 // Greedy inference: picks the road with the most urgent need for a green phase.
 //
-// Score formula:  score[i] = queue[i] × intensity_multiplier[i]
-//   — Combines how backed-up a road is RIGHT NOW (queue) with how quickly it will
-//     get worse if ignored (intensity). The road with the highest score goes green next.
+// Score formula:  score[i] = queue[i]
+//   — Uses current queue depth directly. Intensity already shapes how fast queues
+//     grow in mlQueueTick(), so multiplying it in here would double-count it and
+//     cause a high-intensity road to outrank a road with more cars.
 //
 // Green duration formula:  dur = MIN_GREEN + queue[best] × (MAX_GREEN - MIN_GREEN)
 //   — Scales the green phase length between 5 s and 15 s proportionally to how long
@@ -60,10 +61,11 @@ void mlQueueTick(uint32_t now) {
 //
 // Always returns true (model is always "loaded" — it's a simple formula, not a TFLite model).
 bool mlInfer(int* road, uint32_t* durationMs) {
-    // Compute urgency score for each road.
+    // Compute urgency score for each road: simply the current queue depth.
+    // (Intensity is intentionally excluded here — it already drives accumulation in mlQueueTick.)
     float scores[4];
     for (int i = 0; i < 4; i++)
-        scores[i] = traffic.queues[i] * ML_INTENSITY_MUL[traffic.intensity[i]];
+        scores[i] = traffic.queues[i];
 
     // Find the road with the highest score.
     int best = 0;
